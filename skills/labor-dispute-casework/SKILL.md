@@ -4,7 +4,7 @@ description: 劳动争议办案总控与案件编排器。当律师需要启动�
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
 version: "0.2.0"
-license:
+license: AGPL-3.0
 ---
 
 # 劳动争议办案总控

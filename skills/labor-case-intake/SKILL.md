@@ -4,7 +4,7 @@ description: 劳动争议案件接入、材料盘点和初步分流。当需要�
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
 version: "0.2.0"
-license:
+license: AGPL-3.0
 ---
 
 # 劳动争议案件接入

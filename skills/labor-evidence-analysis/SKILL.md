@@ -4,7 +4,7 @@ description: 劳动争议证据要件分析和证据清单生成。基于争点�
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
 version: "1.0.0"
-license:
+license: AGPL-3.0
 ---
 
 # 劳动争议证据分析

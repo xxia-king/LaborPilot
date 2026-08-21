@@ -4,7 +4,7 @@ description: 劳动争议争点、请求权或抗辩权基础分析。根据案�
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
 version: "1.0.0"
-license:
+license: AGPL-3.0
 ---
 
 # 劳动争议争点分析

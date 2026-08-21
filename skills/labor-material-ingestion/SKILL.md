@@ -4,7 +4,7 @@ description: 劳动争议原始材料接入与本地处理。当案件以 PDF、
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
 version: "0.2.0"
-license:
+license: AGPL-3.0
 ---
 
 # 劳动争议材料接入

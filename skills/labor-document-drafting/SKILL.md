@@ -4,7 +4,7 @@ description: 劳动争议法律文书起草。基于分析结果,按模板生成
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
 version: "1.0.0"
-license:
+license: AGPL-3.0
 ---
 
 # 劳动争议文书起草

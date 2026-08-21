@@ -4,7 +4,7 @@ description: 劳动争议金额计算、时效和程序路径。基于争点分�
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
 version: "1.0.0"
-license:
+license: AGPL-3.0
 ---
 
 # 劳动争议金额与程序

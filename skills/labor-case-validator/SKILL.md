@@ -4,7 +4,7 @@ description: 劳动争议案件状态、分析底稿和文书初稿的独立验�
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
 version: "0.2.0"
-license:
+license: AGPL-3.0
 ---
 
 # 劳动争议独立验证
