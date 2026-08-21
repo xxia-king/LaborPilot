@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "case-state.schema.json",
+  "title": "Labor dispute case graph state",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "case_id", "representation", "stage", "jurisdiction", "analysis_date",
+    "risk_level", "current_node", "pending_nodes", "parties", "goals", "facts", "materials", "issues",
+    "evidence", "rules", "claims", "deadlines", "decisions", "deliverables", "node_runs",
+    "validations", "approvals", "checkpoints", "artifacts", "events", "paused", "next_action"
+  ],
+  "properties": {
+    "schema_version": {"const": "2.0"},
+    "case_id": {"type": "string", "minLength": 1},
+    "representation": {"enum": ["employee", "employer", "undetermined"]},
+    "stage": {"enum": ["undetermined", "intake", "pre_arbitration", "arbitration", "first_instance", "second_instance", "closure"]},
+    "jurisdiction": {"type": "string", "minLength": 1},
+    "analysis_date": {"type": "string", "format": "date"},
+    "previous_state": {"type": ["string", "null"]},
+    "risk_level": {"enum": ["standard", "complex", "high"]},
+    "current_node": {"type": "string", "minLength": 1},
+    "pending_nodes": {"type": "array", "items": {"type": "string"}},
+    "paused": {"type": ["object", "null"]},
+    "task_context": {
+      "type": "object",
+      "required": ["user_request", "requested_outputs", "constraints", "confirmed_by", "confirmed_at"],
+      "properties": {
+        "user_request": {"type": ["string", "null"]},
+        "requested_outputs": {"type": "array", "items": {"type": "string"}},
+        "constraints": {"type": "array", "items": {"type": "string"}},
+        "confirmed_by": {"type": ["string", "null"]},
+        "confirmed_at": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    },
+    "parties": {"type": "array", "items": {"type": "object"}},
+    "goals": {"type": "array", "items": {"type": "string"}},
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fact_id", "statement", "status", "sources"],
+        "properties": {
+          "fact_id": {"type": "string"},
+          "statement": {"type": "string"},
+          "status": {"enum": ["supported", "client_statement", "opponent_allegation", "disputed", "to_verify"]},
+          "sources": {"type": "array", "items": {"type": "string"}},
+          "occurred_on": {"type": ["string", "null"]}
+        },
+        "additionalProperties": true
+      }
+    },
+    "materials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "material_id": {"type": "string"},
+          "source_path": {"type": "string"},
+          "source_sha256": {"type": "string", "pattern": "^[a-fA-F0-9]{64}$"},
+          "page_start": {"type": ["integer", "null"], "minimum": 1},
+          "page_end": {"type": ["integer", "null"], "minimum": 1},
+          "derivative_path": {"type": ["string", "null"]},
+          "ocr_engine": {"type": ["string", "null"]},
+          "ocr_language": {"type": ["string", "null"]},
+          "ocr_status": {"enum": ["not_needed", "pending", "partial", "completed", "failed", null]},
+          "visual_review_status": {"enum": ["not_started", "sampled", "critical_pages_reviewed", "completed", null]},
+          "original_or_copy": {"enum": ["original", "copy", "unknown", null]}
+        },
+        "additionalProperties": true
+      }
+    },
+    "issues": {"type": "array", "items": {"type": "object"}},
+    "evidence": {"type": "array", "items": {"type": "object"}},
+    "rules": {"type": "array", "items": {"type": "object"}},
+    "claims": {"type": "array", "items": {"type": "object"}},
+    "deadlines": {"type": "array", "items": {"type": "object"}},
+    "decisions": {"type": "array", "items": {"type": "object"}},
+    "deliverables": {"type": "array", "items": {"type": "object"}},
+    "node_runs": {"type": "array", "items": {"type": "object"}},
+    "validations": {"type": "array", "items": {"type": "object"}},
+    "approvals": {"type": "array", "items": {"type": "object"}},
+    "checkpoints": {"type": "array", "items": {"type": "object"}},
+    "artifacts": {"type": "array", "items": {"type": "object"}},
+    "events": {"type": "array", "items": {"type": "object"}},
+    "next_action": {"type": ["string", "null"]}
+  }
+}

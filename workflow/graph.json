@@ -1,0 +1,38 @@
+{
+  "graph_version": "1.1",
+  "entry_node": "task_intake",
+  "terminal_node": "stage_close",
+  "transitions": [
+    {"from": "task_intake", "on": "pass", "to": "material_ingestion"},
+    {"from": "task_intake", "on": "pause", "to": "task_intake"},
+    {"from": "material_ingestion", "on": "pass", "to": "intake"},
+    {"from": "material_ingestion", "on": "pause", "to": "material_ingestion"},
+    {"from": "intake", "on": "pass", "to": "issue_analysis"},
+    {"from": "intake", "on": "pause", "to": "intake"},
+    {"from": "issue_analysis", "on": "pass", "to": ["evidence_analysis", "authority_research"]},
+    {"from": "issue_analysis", "on": "return", "to": "intake"},
+    {"from": "evidence_analysis", "on": "pass", "to": "claims_procedure"},
+    {"from": "evidence_analysis", "on": "return", "to": "intake"},
+    {"from": "authority_research", "on": "pass", "to": "claims_procedure"},
+    {"from": "authority_research", "on": "return", "to": "issue_analysis"},
+    {"from": "claims_procedure", "on": "pass", "to": "strategy_approval"},
+    {"from": "claims_procedure", "on": "return", "to": "evidence_analysis"},
+    {"from": "strategy_approval", "on": "approved", "to": "drafting"},
+    {"from": "strategy_approval", "on": "return", "to": "issue_analysis"},
+    {"from": "drafting", "on": "pass", "to": "validation"},
+    {"from": "validation", "on": "pass", "to": "lawyer_approval"},
+    {"from": "validation", "on": "return", "to": "drafting"},
+    {"from": "validation", "on": "escalate", "to": "lawyer_approval"},
+    {"from": "lawyer_approval", "on": "approved", "to": "stage_close"},
+    {"from": "lawyer_approval", "on": "return", "to": "drafting"}
+  ],
+  "risk_routes": {
+    "standard": {"required_validations": ["deterministic", "adversarial"]},
+    "complex": {"required_validations": ["deterministic", "adversarial", "authority_second_pass"]},
+    "high": {"required_validations": ["deterministic", "adversarial", "authority_second_pass"], "mandatory_escalation": true}
+  },
+  "approval_gates": {
+    "strategy_approval": ["representation", "stage", "requested_document", "provisional_strategy"],
+    "lawyer_approval": ["validated_draft", "residual_risks", "submission_decision"]
+  }
+}
