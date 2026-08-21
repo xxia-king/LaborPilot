@@ -1,0 +1,5 @@
+*.pyc.tmp
+__pycache__/
+*.lock
+.DS_Store
+Thumbs.db
