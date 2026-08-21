@@ -2,13 +2,15 @@
 
 ## 安装
 
-核心功能开箱即用,仅需 Python 3。可选增强:
+核心知识组件和办案逻辑可离线使用。生成 `.docx` 文书需要本机安装 Pandoc:
 
 ```bash
 # 文书生成需要 pandoc
 pandoc --version || brew install pandoc   # macOS
 # apt install pandoc                      # Linux
 ```
+
+材料读取、扫描件 OCR、法律法规及案例核验等环节，可按具体任务调用运行环境已有或用户自行配置的外部能力。LaborPilot 不绑定具体的 OCR、法律数据库、MCP 或其他服务。
 
 > **适用范围**:全国规则层适用于各地劳动争议案件;地方口径层依据浙江省现行规定编译,浙江以外地区使用时,地方口径部分应结合本地裁判规则核查。
 
@@ -42,12 +44,6 @@ python3 scripts/generate_docs.py --case my_case.json --output ./output
 
 输入也支持 PDF 案卷材料、图片、自然语言案件描述,引擎自动完成材料摄取与要素提取。
 
-## 辅助用法:争点查询
+## 办案中的争点识别
 
-```bash
-# 搜索争点
-python3 scripts/issue_router.py --search "加班费"
-
-# 显示完整争点卡内容
-python3 scripts/issue_router.py --search "违法解除 2N" --full
-```
+LaborPilot 在处理具体案件时，内部调用编译知识组件匹配相关法律争点，并将构成要件、举证责任、法律依据、浙江口径、计算规则和风险提示融入案件分析。知识卡不作为独立卡片或完整原始数据对外输出。

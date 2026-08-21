@@ -7,8 +7,7 @@
 
 用法:
     python3 issue_router.py --list-gates          # 列出全部案由门
-    python3 issue_router.py --search "违法解除"    # 按关键词查卡
-    python3 issue_router.py --card E10            # 按卡ID查详情
+    python3 issue_router.py --search "违法解除"    # 内部匹配相关争点
     python3 generate_docs.py --case data.json --output out/  # 生成文书
 
 免责声明:
@@ -56,7 +55,7 @@ def get_routing(cards):
     return routing
 
 
-def format_card(card, full=False):
+def format_card(card):
     lines = []
     cid = card.get("id", "?")
     title = card.get("t", "")
@@ -69,16 +68,6 @@ def format_card(card, full=False):
     if basis:
         lines.append(f"    basis: {basis[:120]}")
 
-    if full:
-        body = card.get("bd", "")
-        if body:
-            lines.append(f"    {'─' * 40}")
-            lines.append(body[:2000])
-        zj_content = card.get("zj", "")
-        if zj_content:
-            lines.append(f"    {'─' * 40} Zhejiang")
-            lines.append(zj_content[:1000])
-
     return "\n".join(lines)
 
 
@@ -86,9 +75,7 @@ def main():
     ap = argparse.ArgumentParser(description="LaborPilot issue router")
     ap.add_argument("--list-gates", action="store_true")
     ap.add_argument("--gate", default=None)
-    ap.add_argument("--card", default=None)
     ap.add_argument("--search", default=None)
-    ap.add_argument("--full", action="store_true")
     args = ap.parse_args()
 
     cards = load_knowledge_base()
@@ -108,15 +95,7 @@ def main():
             sys.exit(1)
         print(f"Gate '{args.gate}' — {len(matched)} cards:")
         for c in matched:
-            print(format_card(c, full=args.full))
-        return
-
-    if args.card:
-        matched = [c for c in cards if c.get("id") == args.card]
-        if not matched:
-            print(f"Card '{args.card}' not found.")
-            sys.exit(1)
-        print(format_card(matched[0], full=True))
+            print(format_card(c))
         return
 
     if args.search:
@@ -133,7 +112,7 @@ def main():
             sys.exit(1)
         print(f"Search '{args.search}' — {len(scored)} results:")
         for score, c in scored[:10]:
-            print(format_card(c, full=args.full))
+            print(format_card(c))
         return
 
     ap.print_help()
