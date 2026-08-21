@@ -137,7 +137,7 @@ LaborPilot 引擎
 
 ## 许可
 
-* 引擎代码: [AGPL 3.0](LICENSE)
+* 引擎代码: [AGPL 3.0](LICENSE),Copyright 2026 金莉珊 (xxia-king)
 
 * 争点知识数据: 暂不公开,仅限本引擎运行时使用
 
