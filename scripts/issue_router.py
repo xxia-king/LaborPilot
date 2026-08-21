@@ -603,8 +603,8 @@ def _field_match_score(content, keywords):
     return sum(len(keyword) ** 2 for keyword in keywords if keyword in content)
 
 
-def query_knowledge(text, limit=3):
-    """在脚本内部查询编译知识，只返回有限的任务型结果。"""
+def query_knowledge(text):
+    """在脚本内部查询编译知识，按相关性返回任务型片段。"""
     if not isinstance(text, str) or not text.strip():
         return []
     if not _COMPILED_KNOWLEDGE:
@@ -627,7 +627,6 @@ def query_knowledge(text, limit=3):
     if not keywords:
         return []
 
-    limit = max(1, min(int(limit), 3))
     internal_id_pattern = _internal_id_pattern(cards)
     scored = []
     for card in cards:
@@ -653,7 +652,7 @@ def query_knowledge(text, limit=3):
         return results
     minimum_score = scored[0][0] * 0.75
     matched_cards = [item for item in scored if item[0] >= minimum_score]
-    for _, card in matched_cards[:limit]:
+    for _, card in matched_cards:
         results.append({
             "issue": _sanitize_text(card.get("t", ""), internal_id_pattern, 120),
             "analysis_points": _excerpt(
@@ -694,7 +693,7 @@ def main():
     ap.add_argument("--search", required=True, help="具体案件问题或争点描述")
     args = ap.parse_args()
 
-    results = query_knowledge(args.search, limit=3)
+    results = query_knowledge(args.search)
     if not results:
         print("未匹配到相关内置争点，应结合案件材料另行分析并核验法律依据。")
         sys.exit(1)

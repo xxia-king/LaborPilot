@@ -3,7 +3,7 @@ name: labor-claims-procedure
 description: 劳动争议金额计算、时效和程序路径。基于争点分析结果,逐项计算请求金额(N/2N/加班费/工伤待遇),确定时效和程序策略。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.0.0"
+version: "1.1.0"
 license: AGPL-3.0
 ---
 

@@ -10,6 +10,8 @@
 
 - `case_state` 必填字段、ID 唯一性和引用完整性。
 - 每个 `supported` 事实至少有一个材料来源。
+- 争点路由按案件需要动态召回并覆盖相关争点；不输出完整知识卡正文、原始字段、内部卡号或案由门卡。
+- `VERSION`、Plugin 清单、根 Skill、子 Skill 与 `CHANGELOG.md` 版本一致，`python3 scripts/sync_version.py --check` 通过。
 - 每个请求／抗辩关联争点、事实、证据和法源。
 - 金额型请求关联已验证计算记录。
 - 引用法源具有文档和条文锚点，废止或异常项未被静默采用。

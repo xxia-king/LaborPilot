@@ -1,0 +1,26 @@
+name: 版本一致性检查
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  version-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: 校验版本同步
+        run: python3 scripts/sync_version.py --check
+
+      - name: 运行回归测试
+        run: python3 -m unittest discover -s tests -v

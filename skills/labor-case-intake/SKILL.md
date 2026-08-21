@@ -3,7 +3,7 @@ name: labor-case-intake
 description: 劳动争议案件接入、材料盘点和初步分流。当需要建立材料清单、案件时间轴、当事人询问提纲、识别劳动关系类型或判断程序阶段时使用。不用于直接撰写诉讼文书。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "0.2.0"
+version: "1.1.0"
 license: AGPL-3.0
 ---
 

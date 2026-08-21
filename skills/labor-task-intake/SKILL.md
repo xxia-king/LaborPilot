@@ -3,7 +3,7 @@ name: labor-task-intake
 description: 劳动争议办案的前置任务确认。当用户启动新案件、给出案件文件但未明确要求，或代理立场、程序阶段尚未确认时使用。在读取或处理案件材料前必须先完成。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "0.2.0"
+version: "1.1.0"
 license: AGPL-3.0
 ---
 

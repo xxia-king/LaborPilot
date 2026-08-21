@@ -3,7 +3,7 @@ name: labor-material-ingestion
 description: 劳动争议原始材料接入与本地处理。当案件以 PDF、图片、扫描件或混合文件提供，需要保全原件、检测文字层、决定是否 OCR、生成分页索引或登记派生文件时使用。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "0.2.0"
+version: "1.1.0"
 license: AGPL-3.0
 ---
 

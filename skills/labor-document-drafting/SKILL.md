@@ -3,7 +3,7 @@ name: labor-document-drafting
 description: 劳动争议法律文书起草。基于分析结果,按模板生成仲裁申请书、答辩状、代理词等文书的律师复核初稿。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.0.0"
+version: "1.1.0"
 license: AGPL-3.0
 ---
 

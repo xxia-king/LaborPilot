@@ -3,7 +3,7 @@ name: labor-dispute-casework
 description: 劳动争议办案总控与案件编排器。当律师需要启动、继续或跨阶段管理中国劳动争议案件，需要判断下一步专业任务、维护 case_state、执行审批门禁或回写阶段成果时使用。支持劳动者方和用人单位方，默认浙江口径。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "0.2.0"
+version: "1.1.0"
 license: AGPL-3.0
 ---
 
