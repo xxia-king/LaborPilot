@@ -42,7 +42,7 @@ python3 scripts/generate_docs.py --case my_case.json --output ./output
 
 默认输出全部三种文书:`仲裁申请书.docx`、`证据清单.docx`、`行动清单.docx`;可用 `--types "仲裁申请书,证据清单"` 指定子集。
 
-输入也支持 PDF 案卷材料、图片、自然语言案件描述,引擎自动完成材料摄取与要素提取。
+输入也支持 PDF 案卷材料、图片、自然语言案件描述。PDF、图片等材料的读取与扫描件 OCR 由运行环境提供；LaborPilot 在取得可读文本后完成要素提取和办案分析。
 
 ## 办案中的争点识别
 

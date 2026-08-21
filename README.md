@@ -48,6 +48,8 @@ git clone https://github.com/xxia-king/LaborPilot.git
 cd LaborPilot
 ```
 
+通用 Agent 以仓库根目录的 `SKILL.md` 为入口；支持多 Skill 自动发现的平台可直接读取 `skills/` 下的专业 Skill。Codex 可通过 `.codex-plugin/plugin.json` 识别整包插件。
+
 LaborPilot 聚焦劳动争议案件的争点分析、证据审查、金额计算和文书生成，核心知识组件可离线使用。生成 `.docx` 文书需要本机安装 [Pandoc](https://pandoc.org)。
 
 完整办案过程中，材料读取、扫描件 OCR、法律法规及案例核验等环节可能需要调用运行环境已有或用户自行配置的外部能力。LaborPilot 不绑定具体的 OCR、法律数据库、MCP 或其他服务。
@@ -56,7 +58,7 @@ LaborPilot 聚焦劳动争议案件的争点分析、证据审查、金额计算
 
 ### 输入
 
-支持多种输入形式:结构化 JSON、PDF 案卷材料、图片、自然语言案件描述。引擎自动完成材料摄取与要素提取。
+支持多种输入形式:结构化 JSON、PDF 案卷材料、图片、自然语言案件描述。PDF、图片等材料的读取与扫描件 OCR 由运行环境提供；LaborPilot 在取得可读文本后完成要素提取和办案分析。
 
 以结构化 JSON 为例(`my_case.json`):
 
