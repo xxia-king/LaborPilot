@@ -137,20 +137,19 @@ LaborPilot 引擎
 
 ## 许可
 
-* 引擎代码: [AGPL 3.0](LICENSE),Copyright 2026 金莉珊 (xxia-king)
+* 引擎代码: [AGPL 3.0](LICENSE),Copyright 2026 Zhejiang Jiaruicheng Law Firm · Jin Lishan
 
 * 争点知识数据: 暂不公开,仅限本引擎运行时使用
 
 * 产出物: 所有 AI 产出仅供参考,须经专业律师审核
 
-## 作者
+## 作者与联系
 
-**金莉珊律师**,浙江嘉瑞成律师事务所
+金莉珊，浙江嘉瑞成律师事务所执业律师，热衷于探索 AI 科技在法律实务中的应用。
 
-<https://jinlishan.com/>
+- 个人主页：[https://jinlishan.com/](https://jinlishan.com/)
+- 微信号：`jinlishan_`（添加请备注来自 GitHub）
+- 公众号：日进斗金大壮
+- 视频号：金莉珊律师
 
-欢迎扫码添加微信交流
-
-<div align="center">
-<img src="assets/img/wechat-qr.jpg" width="180" alt="微信: jinlishan_">
-</div>
+<img src="assets/img/wechat-qr.jpg" alt="微信二维码" width="160">
