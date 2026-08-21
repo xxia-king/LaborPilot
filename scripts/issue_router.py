@@ -559,17 +559,48 @@ _COMPILED_KNOWLEDGE = (
 # END COMPILED KNOWLEDGE
 
 
-def _excerpt(body, keywords, max_chars=1200):
+def _internal_id_pattern(cards):
+    """生成仅用于过滤内部卡号的模式，不将卡号暴露到查询结果。"""
+    card_ids = sorted(
+        {str(card.get("id", "")).strip() for card in cards if card.get("id")},
+        key=len,
+        reverse=True,
+    )
+    if not card_ids:
+        return None
+    alternatives = "|".join(re.escape(card_id) for card_id in card_ids)
+    return re.compile(rf"(?<![A-Za-z0-9])(?:{alternatives})(?![A-Za-z0-9])")
+
+
+def _sanitize_text(text, internal_id_pattern, max_chars):
+    """清理内部卡号与原始 Markdown 标记，并限制单个字段的输出长度。"""
+    cleaned = str(text or "")
+    if internal_id_pattern:
+        cleaned = internal_id_pattern.sub("", cleaned)
+    cleaned = re.sub(r"(?m)^#{1,6}\s*", "", cleaned)
+    cleaned = re.sub(r"[ \t]+(?=\n)", "", cleaned)
+    cleaned = re.sub(r"[ \t]{2,}", " ", cleaned)
+    cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
+    if len(cleaned) > max_chars:
+        cleaned = cleaned[:max_chars].rstrip() + "…"
+    return cleaned
+
+
+def _excerpt(body, keywords, internal_id_pattern, max_chars=700, max_chunks=4):
     chunks = [part.strip() for part in body.split("\n") if part.strip()]
     ranked = []
     for index, chunk in enumerate(chunks):
-        score = sum(1 for keyword in keywords if keyword in chunk)
+        score = sum(len(keyword) ** 2 for keyword in keywords if keyword in chunk)
         if score:
             ranked.append((-score, index, chunk))
-    selected = [item[2] for item in sorted(ranked)[:6]]
+    selected = [item[2] for item in sorted(ranked)[:max_chunks]]
     if not selected:
-        selected = chunks[:6]
-    return "\n".join(selected)[:max_chars]
+        selected = chunks[:max_chunks]
+    return _sanitize_text("\n".join(selected), internal_id_pattern, max_chars)
+
+
+def _field_match_score(content, keywords):
+    return sum(len(keyword) ** 2 for keyword in keywords if keyword in content)
 
 
 def query_knowledge(text, limit=3):
@@ -597,22 +628,48 @@ def query_knowledge(text, limit=3):
         return []
 
     limit = max(1, min(int(limit), 3))
+    internal_id_pattern = _internal_id_pattern(cards)
     scored = []
     for card in cards:
-        searchable = " ".join(
-            str(card.get(key, "")) for key in ("t", "g", "bd", "zj")
+        # 案由门只用于内部组织知识，不作为查询结果返回。
+        if not card.get("g"):
+            continue
+        title = str(card.get("t", ""))
+        gate = str(card.get("g", ""))
+        body = str(card.get("bd", ""))
+        zhejiang = str(card.get("zj", ""))
+        score = (
+            _field_match_score(title, keywords) * 8
+            + _field_match_score(gate, keywords) * 3
+            + min(_field_match_score(body, keywords), 100)
+            + min(_field_match_score(zhejiang, keywords), 50)
         )
-        score = sum(1 for keyword in keywords if keyword in searchable)
         if score:
             scored.append((score, card))
     scored.sort(key=lambda item: -item[0])
 
     results = []
-    for _, card in scored[:limit]:
+    if not scored:
+        return results
+    minimum_score = scored[0][0] * 0.75
+    matched_cards = [item for item in scored if item[0] >= minimum_score]
+    for _, card in matched_cards[:limit]:
         results.append({
-            "issue": card.get("t", ""),
-            "analysis_points": _excerpt(card.get("bd", ""), keywords),
-            "zhejiang_guidance": str(card.get("zj", ""))[:500],
+            "issue": _sanitize_text(card.get("t", ""), internal_id_pattern, 120),
+            "analysis_points": _excerpt(
+                card.get("bd", ""),
+                keywords,
+                internal_id_pattern,
+                max_chars=700,
+                max_chunks=4,
+            ),
+            "zhejiang_guidance": _excerpt(
+                card.get("zj", ""),
+                keywords,
+                internal_id_pattern,
+                max_chars=280,
+                max_chunks=2,
+            ),
         })
     return results
 
