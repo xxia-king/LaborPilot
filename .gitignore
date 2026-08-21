@@ -3,3 +3,4 @@ __pycache__/
 *.lock
 .DS_Store
 Thumbs.db
+build_cards.py

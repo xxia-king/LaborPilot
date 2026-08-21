@@ -1,7 +1,7 @@
 {
-  "skill_name": "labor-dispute-casework",
+  "skill_name": "LaborPilot",
   "version": "1.0",
-  "description": "劳动争议办案系统评测:测争点路由、依据引用、浙口径适用、算式正确性",
+  "description": "劳动争议办案引擎评测:测争点路由、依据引用、浙口径适用、算式正确性",
   "evals": [
     {
       "id": "illegal-termination-2n",

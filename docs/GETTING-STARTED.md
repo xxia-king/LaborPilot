@@ -1,42 +1,20 @@
-# Getting Started
+# 快速上手
 
 ## 安装
 
-无需安装依赖(纯 Python 3 标准库 + pandoc)。
+核心功能开箱即用,仅需 Python 3。可选增强:
 
 ```bash
-# 检查 pandoc(文书生成需要)
-pandoc --version
-
-# 如果没有 pandoc
-brew install pandoc  # macOS
-# apt install pandoc  # Linux
+# 文书生成需要 pandoc
+pandoc --version || brew install pandoc   # macOS
+# apt install pandoc                      # Linux
 ```
 
-## 5分钟上手
+> **适用范围**:全国规则层适用于各地劳动争议案件;地方口径层依据浙江省现行规定编译,浙江以外地区使用时,地方口径部分应结合本地裁判规则核查。
 
-### 1. 查看可用案由门
+## 主用法:输入案件 → 生成文书
 
-```bash
-python3 scripts/issue_router.py --list-gates
-```
-
-### 2. 搜索争点
-
-```bash
-python3 scripts/issue_router.py --search "加班费"
-python3 scripts/issue_router.py --search "违法解除 2N"
-```
-
-### 3. 查看完整争点卡
-
-```bash
-python3 scripts/issue_router.py --card B1 --full
-```
-
-### 4. 生成仲裁申请书
-
-准备案件数据 JSON:
+准备案件数据 JSON(`my_case.json`):
 
 ```json
 {
@@ -57,7 +35,19 @@ python3 scripts/issue_router.py --card B1 --full
 生成:
 
 ```bash
-python3 scripts/generate_docs.py --case my_case.json --output ./output --types "仲裁申请书,证据清单"
+python3 scripts/generate_docs.py --case my_case.json --output ./output
 ```
 
-输出: `仲裁申请书.docx` + `证据清单.docx`
+默认输出全部三种文书:`仲裁申请书.docx`、`证据清单.docx`、`行动清单.docx`;可用 `--types "仲裁申请书,证据清单"` 指定子集。
+
+输入也支持 PDF 案卷材料、图片、自然语言案件描述,引擎自动完成材料摄取与要素提取。
+
+## 辅助用法:争点查询
+
+```bash
+# 搜索争点
+python3 scripts/issue_router.py --search "加班费"
+
+# 显示完整争点卡内容
+python3 scripts/issue_router.py --search "违法解除 2N" --full
+```
