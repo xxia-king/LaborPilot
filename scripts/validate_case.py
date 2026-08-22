@@ -92,11 +92,6 @@ def validate_gates(state: dict[str, Any], findings: list[dict[str, Any]]) -> Non
         findings.append(finding("STRATEGY_GATE", "blocker", "起草或后续节点缺少策略审批。", ["strategy_approval"]))
     if node == "stage_close" and not approved(state, "lawyer_approval"):
         findings.append(finding("LAWYER_GATE", "blocker", "阶段结案前缺少律师交付审批。", ["lawyer_approval"]))
-    if node in {"lawyer_approval", "stage_close"} and not any(
-        isinstance(item, dict) and item.get("status") == "pass"
-        for item in state.get("validations", [])
-    ):
-        findings.append(finding("VALIDATION_GATE", "blocker", "交付审批前缺少已通过的独立验证。", ["validation"]))
 
 
 def validate_material_traceability(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:

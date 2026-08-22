@@ -3,7 +3,7 @@ name: labor-document-drafting
 description: 劳动争议法律文书起草。基于分析结果,按模板生成仲裁申请书、答辩状、代理词等文书的律师复核初稿。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.1.0"
+version: "1.2.0"
 license: AGPL-3.0
 ---
 
@@ -18,3 +18,4 @@ license: AGPL-3.0
 3. 生成 .docx 格式(用户交付);Markdown 仅作内部工作稿。
 4. 交独立验证后,经律师审批标注"律师复核初稿"。
 5. 禁止引用未经核实的法条或裁判口径。
+6. 完成节点前使用 `register-artifact` 登记真实存在的初稿文件，并在 `transition --event pass` 中以 `--output-artifact` 关联该 `artifact_id`；只写“已起草”或登记不存在的路径不能通过门禁。

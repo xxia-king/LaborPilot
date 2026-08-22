@@ -3,7 +3,7 @@ name: labor-case-validator
 description: 劳动争议案件状态、分析底稿和文书初稿的独立验证器。当需要在阶段转换或交付前专门查找事实矛盾、证据缺口、引用错误、金额不一致、时效遗漏、主体管辖或程序路由错误时使用。不用于代替起草者继续完善原文。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.1.0"
+version: "1.2.0"
 license: AGPL-3.0
 ---
 
@@ -19,4 +19,4 @@ license: AGPL-3.0
 6. 验证者不得修改待验证产物后自行标记通过。
 7. 律师审批仍是最终交付门禁。
 
-完成后使用 `workflow_graph.py record-validation --report <report.json>` 将验证者、类型、结论、问题和报告路径就地写入单一案件状态。
+完成后使用 `workflow_graph.py record-validation --report <report.json>` 将验证者、类型、结论、问题和报告路径就地写入单一案件状态。结论为 `pass` 或 `escalate` 时报告不可省略；仅传命令行状态会被机器门禁拒绝。

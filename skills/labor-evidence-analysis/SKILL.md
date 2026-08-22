@@ -3,7 +3,7 @@ name: labor-evidence-analysis
 description: 劳动争议证据要件分析和证据清单生成。基于争点分析结果,逐项审查证据缺口,标注举证责任分配,生成本案证据清单。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.1.0"
+version: "1.2.0"
 license: AGPL-3.0
 ---
 
@@ -14,3 +14,4 @@ license: AGPL-3.0
 3. 举证责任倒置项(单位掌握的考勤/工资台账/规章制度等)标注"单位举证不能→推定劳动者主张成立"。
 4. 生成证据清单:按证明事项分组,列证据名称、来源、证明目的、举证责任方。
 5. 标注证据缺口和补充建议。
+6. 完成节点前，将现有证据、证据缺口或举证责任记录以唯一 `evidence_id` 写入 `evidence[]`；确无证据时须取得用户确认并登记结构化豁免。

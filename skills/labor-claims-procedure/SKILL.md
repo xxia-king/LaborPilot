@@ -3,7 +3,7 @@ name: labor-claims-procedure
 description: 劳动争议金额计算、时效和程序路径。基于争点分析结果,逐项计算请求金额(N/2N/加班费/工伤待遇),确定时效和程序策略。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.1.0"
+version: "1.2.0"
 license: AGPL-3.0
 ---
 
@@ -19,3 +19,4 @@ license: AGPL-3.0
 4. 浙江口径优先(如不定时无节假日加班费/加班费入补偿基数/跨2008分段)。
 5. 程序路径:根据金额判断是否适用一裁终局/先予执行。
 6. 时效审查:普通1年 vs 劳动报酬特殊时效。
+7. 完成节点前，将每个请求或抗辩以唯一 `claim_id` 写入 `claims[]`；存在 `amount` 时必须关联 `calculation_id`。

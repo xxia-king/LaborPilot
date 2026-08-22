@@ -559,6 +559,60 @@ _COMPILED_KNOWLEDGE = (
 # END COMPILED KNOWLEDGE
 
 
+_INTENT_PROFILES = (
+    {
+        "triggers": ("违法解除", "口头通知", "组织架构调整", "未通知工会", "不符合录用条件", "无考核记录", "辞退", "开除"),
+        "expansions": ("解除终止", "违法解除", "赔偿金", "2N", "继续履行", "经济补偿"),
+        "core_issue_terms": ("违法解除", "2N"),
+    },
+    {
+        "triggers": ("加班", "法定节假日上班", "每周工作6天", "每天10小时"),
+        "expansions": ("加班费", "平时150%", "休息日200%", "法定节假日300%", "计算基数", "折算"),
+        "core_issue_terms": ("加班费", "计算基数"),
+    },
+    {
+        "triggers": ("未签订书面劳动合同", "未签书面合同", "一直未签", "二倍工资"),
+        "expansions": ("未签书面合同", "二倍工资", "无固定期限", "仲裁时效"),
+        "core_issue_terms": ("未签书面合同", "二倍工资"),
+    },
+    {
+        "triggers": ("竞业限制", "竞业补偿", "竞业协议"),
+        "expansions": ("竞业限制", "补偿标准", "违约金", "保密义务"),
+        "core_issue_terms": ("竞业限制", "保密义务"),
+    },
+    {
+        "triggers": ("工伤", "伤残", "劳动能力鉴定", "停工留薪"),
+        "expansions": ("工伤待遇", "一次性伤残待遇", "停工留薪期", "工伤职工解除限制", "未参保"),
+        "core_issue_terms": ("一次性伤残待遇", "停工留薪期", "工伤职工解除限制"),
+    },
+    {
+        "triggers": ("缴纳社会保险", "未缴社保", "未依法缴纳社会保险", "放弃参保", "社保补缴"),
+        "expansions": ("劳动者被迫解除", "经济补偿N", "社保补缴", "未依法缴纳社会保险", "放弃参保"),
+        "core_issue_terms": ("劳动者被迫解除", "经济补偿N", "社保补缴"),
+    },
+    {
+        "triggers": ("年休假", "年假", "未休年休假"),
+        "expansions": ("年休假天数", "未休年休假", "300%补偿", "仲裁时效"),
+        "core_issue_terms": ("年休假天数", "未休年休假"),
+    },
+    {
+        "triggers": ("试用期", "录用条件"),
+        "expansions": ("试用期", "录用条件", "试用期解除", "违法解除", "举证"),
+        "core_issue_terms": ("试用期", "违法解除"),
+    },
+)
+
+
+def _detected_intents(text):
+    """识别常见劳动争议意图，用于补足字面切片难以覆盖的核心争点。"""
+    normalized = re.sub(r"\s+", "", text)
+    return [
+        profile
+        for profile in _INTENT_PROFILES
+        if any(trigger in normalized for trigger in profile["triggers"])
+    ]
+
+
 def _internal_id_pattern(cards):
     """生成仅用于过滤内部卡号的模式，不将卡号暴露到查询结果。"""
     card_ids = sorted(
@@ -612,6 +666,7 @@ def query_knowledge(text):
         sys.exit(1)
 
     cards = marshal.loads(zlib.decompress(base64.b64decode(_COMPILED_KNOWLEDGE)))
+    detected_intents = _detected_intents(text)
     fragments = re.findall(r"[\u4e00-\u9fff]{2,}|[A-Za-z0-9§]+", text)
     keywords = []
     for fragment in fragments:
@@ -623,6 +678,8 @@ def query_knowledge(text):
                     fragment[index:index + size]
                     for index in range(len(fragment) - size + 1)
                 )
+    for profile in detected_intents:
+        keywords.extend(profile["expansions"])
     keywords = list(dict.fromkeys(keywords))
     if not keywords:
         return []
@@ -652,6 +709,26 @@ def query_knowledge(text):
         return results
     minimum_score = scored[0][0] * 0.75
     matched_cards = [item for item in scored if item[0] >= minimum_score]
+    if detected_intents:
+        intent_title_terms = {
+            term
+            for profile in detected_intents
+            for term in (*profile["expansions"], *profile["core_issue_terms"])
+        }
+        matched_cards = [
+            item
+            for item in matched_cards
+            if any(term in str(item[1].get("t", "")) for term in intent_title_terms)
+        ]
+    matched_objects = {id(card) for _, card in matched_cards}
+    for profile in detected_intents:
+        for card in cards:
+            if not card.get("g") or id(card) in matched_objects:
+                continue
+            title = str(card.get("t", ""))
+            if any(term in title for term in profile["core_issue_terms"]):
+                matched_cards.append((0, card))
+                matched_objects.add(id(card))
     for _, card in matched_cards:
         results.append({
             "issue": _sanitize_text(card.get("t", ""), internal_id_pattern, 120),

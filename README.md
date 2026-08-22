@@ -2,7 +2,7 @@
 
 > 劳动争议智能办案引擎(全国规则 + 浙江口径)——149 部法规文献提炼为 96 张争点知识卡,内嵌分发
 
-[![Version](https://img.shields.io/badge/version-v1.1.0-brightgreen.svg)](./CHANGELOG.md) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Version](https://img.shields.io/badge/version-v1.2.0-brightgreen.svg)](./CHANGELOG.md) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 **⚠️ 免责声明:本引擎产出的所有分析结果和法律文书均由 AI 辅助生成,仅供参考,不构成法律意见,必须经专业律师审核后方可使用。**
 

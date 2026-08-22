@@ -83,6 +83,23 @@
     "approvals": {"type": "array", "items": {"type": "object"}},
     "checkpoints": {"type": "array", "items": {"type": "object"}},
     "artifacts": {"type": "array", "items": {"type": "object"}},
+    "node_requirement_waivers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["waiver_id", "node", "requirement_id", "status", "reason", "confirmed_by", "confirmed_at"],
+        "properties": {
+          "waiver_id": {"type": "string", "minLength": 1},
+          "node": {"type": "string", "minLength": 1},
+          "requirement_id": {"type": "string", "minLength": 1},
+          "status": {"const": "approved"},
+          "reason": {"type": "string", "minLength": 8},
+          "confirmed_by": {"type": "string", "minLength": 1},
+          "confirmed_at": {"type": "string", "minLength": 1}
+        },
+        "additionalProperties": false
+      }
+    },
     "events": {"type": "array", "items": {"type": "object"}},
     "next_action": {"type": ["string", "null"]}
   }

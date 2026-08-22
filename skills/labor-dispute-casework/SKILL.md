@@ -3,7 +3,7 @@ name: labor-dispute-casework
 description: 劳动争议办案总控与案件编排器。当律师需要启动、继续或跨阶段管理中国劳动争议案件，需要判断下一步专业任务、维护 case_state、执行审批门禁或回写阶段成果时使用。支持劳动者方和用人单位方，默认浙江口径。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.1.0"
+version: "1.2.0"
 license: AGPL-3.0
 ---
 
@@ -23,11 +23,12 @@ license: AGPL-3.0
 
 1. 读取 [节点契约](../../references/node-contracts.md)、[交付物规范](../../references/output-layout.md) 和 `../../workflow/graph.json`。
 2. 无案件状态时，在 `<case-root>/.casework/case_state.json` 运行 `case_state.py init`；新状态从 `task_intake` 节点启动。
-3. 运行 `python3 ../../scripts/workflow_graph.py route --state <case-root>/.casework/case_state.json`获取可进入节点。
+3. 运行 `python3 ../../scripts/workflow_graph.py route --state <case-root>/.casework/case_state.json` 获取可进入节点和当前节点的机器完成条件。
 4. 当前节点为 `task_intake` 时，完整读取 `../labor-task-intake/SKILL.md`。代理立场不得仅凭文件来源推测；但用户已明说“用人单位方”、“分析并写仲裁答辩状”时，应直接记录已明确的立场、任务和仲裁阶段，不重复追问。
 5. 使用 `case_state.py set-task` 就地更新单一状态，再由 `workflow_graph.py transition --event pass` 进入 `material_ingestion`。两个命令默认不传 `--output`。
 6. 根据后续节点只调用一个主 Skill；法源、证据或计算可作必要的并行分支，但结果合并到同一份《案件研判报告》，节点运行文件放入 `.casework/`。用户侧正式成果默认交付 `.docx`，Markdown 仅作为内部工作稿；用户明确要求 Markdown 时例外。
-7. 节点完成后运行独立验证，再按 `pass`、`return`、`pause`或 `escalate` 更新状态。
+7. 节点完成后按 `workflow/graph.json` 登记真实业务状态和产物，再按 `pass`、`return`、`pause` 或 `escalate` 更新状态；不得用空数组或空备注绕过门禁。
+8. 任务确实没有文件或证据时，只有在用户明确确认具体原因后，才可运行 `workflow_graph.py record-waiver --requirement <条件编号> --reason <具体原因> --confirmed-by <确认人>`。该命令只对当前节点中标记可豁免的条件生效；`draft_artifact` 和 `report_backed_validations` 不允许豁免。
 
 ## 技能路由
 

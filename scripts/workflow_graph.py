@@ -77,6 +77,24 @@ def descendants(graph: dict[str, Any], start: str) -> set[str]:
     return result
 
 
+def forward_descendants(graph: dict[str, Any], start: str) -> set[str]:
+    """仅沿正常完成路径判断下游，避免 return 边形成反向环。"""
+    result: set[str] = set()
+    pending = [start]
+    while pending:
+        node = pending.pop()
+        for transition in transitions_for(graph, node):
+            if transition.get("on") not in {"pass", "approved"}:
+                continue
+            target = transition.get("to")
+            targets = target if isinstance(target, list) else [target]
+            for item in targets:
+                if isinstance(item, str) and item not in result and item != start:
+                    result.add(item)
+                    pending.append(item)
+    return result
+
+
 def node_run_outcome(run: dict[str, Any]) -> str:
     value = str(run.get("status") or run.get("result") or "").casefold()
     if value.startswith("return"):
@@ -128,6 +146,14 @@ def returned_nodes_with_rework_started(state: dict[str, Any]) -> set[str]:
     return resolved
 
 
+def has_explicit_escalation_route(graph: dict[str, Any], node: str) -> bool:
+    """节点若声明了升级去向，升级即为合法完成路径，由目标节点承接风险。"""
+    return any(
+        transition.get("on") == "escalate" and transition.get("to") != node
+        for transition in transitions_for(graph, node)
+    )
+
+
 def workflow_blockers(state: dict[str, Any], graph: dict[str, Any]) -> list[str]:
     current = state.get("current_node")
     blockers: list[str] = []
@@ -145,10 +171,13 @@ def workflow_blockers(state: dict[str, Any], graph: dict[str, Any]) -> list[str]
         outcome = node_run_outcome(run)
         if outcome == "returned" and node in resolved_returns:
             continue
+        if outcome == "escalated" and has_explicit_escalation_route(graph, node):
+            continue
         if outcome in {"returned", "failed", "paused", "escalated"} and current != node and current in descendants(graph, node):
             blockers.append(f"上游节点 {node} 最新结果为 {outcome}，未修复前不得处理 {current}。")
     if current == "claims_procedure" and state.get("pending_nodes"):
         blockers.append("证据或法源分支尚未全部完成，不得进入金额程序节点。")
+    blockers.extend(completed_node_requirement_errors(state, graph))
     return blockers
 
 
@@ -161,10 +190,188 @@ def required_validation_kinds(state: dict[str, Any], graph: dict[str, Any]) -> l
 
 
 def passed_validation_kinds(state: dict[str, Any]) -> set[str]:
-    return {item.get("kind") for item in state["validations"] if item.get("status") == "pass" and item.get("kind")}
+    latest: dict[str, dict[str, Any]] = {}
+    for item in state["validations"]:
+        if isinstance(item, dict) and isinstance(item.get("kind"), str):
+            latest[item["kind"]] = item
+    return {kind for kind, item in latest.items() if item.get("status") == "pass"}
 
 
-def gate_errors(state: dict[str, Any], graph: dict[str, Any], node: str, event: str) -> list[str]:
+def requirements_for(graph: dict[str, Any], node: str) -> list[dict[str, Any]]:
+    requirements = graph.get("node_requirements", {}).get(node, [])
+    return [item for item in requirements if isinstance(item, dict)]
+
+
+def requirement_waived(state: dict[str, Any], node: str, requirement_id: str) -> bool:
+    for waiver in reversed(state.get("node_requirement_waivers", [])):
+        if not isinstance(waiver, dict):
+            continue
+        if (
+            waiver.get("node") == node
+            and waiver.get("requirement_id") == requirement_id
+            and waiver.get("status") == "approved"
+            and isinstance(waiver.get("reason"), str)
+            and len(waiver["reason"].strip()) >= 8
+            and waiver.get("confirmed_by")
+            and waiver.get("confirmed_at")
+        ):
+            return True
+    return False
+
+
+def validation_report_is_valid(record: dict[str, Any]) -> bool:
+    report_path = record.get("report_path")
+    if not isinstance(report_path, str) or not report_path:
+        return False
+    path = Path(report_path).expanduser()
+    if not path.is_file():
+        return False
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (
+        isinstance(payload, dict)
+        and payload.get("status") == record.get("status")
+        and isinstance(payload.get("findings"), list)
+    )
+
+
+def requirement_is_met(
+    state: dict[str, Any],
+    graph: dict[str, Any],
+    requirement: dict[str, Any],
+    transition_output_artifact_ids: list[str],
+) -> bool:
+    requirement_type = requirement.get("type")
+    if requirement_type == "non_empty_collection":
+        collection = state.get(str(requirement.get("collection", "")))
+        if not isinstance(collection, list) or not collection:
+            return False
+        id_key = requirement.get("id_key")
+        if id_key:
+            return all(
+                isinstance(item, dict)
+                and isinstance(item.get(str(id_key)), str)
+                and bool(item[str(id_key)].strip())
+                for item in collection
+            )
+        return True
+    if requirement_type == "traceable_material":
+        for material in state.get("materials", []):
+            if not isinstance(material, dict):
+                continue
+            digest = str(material.get("source_sha256", ""))
+            if (
+                material.get("material_id")
+                and material.get("source_path")
+                and len(digest) == 64
+                and all(character in "0123456789abcdefABCDEF" for character in digest)
+            ):
+                return True
+        return False
+    if requirement_type == "verified_authority":
+        rules = state.get("rules", [])
+        return bool(rules) and all(
+            isinstance(rule, dict)
+            and rule.get("rule_id")
+            and rule.get("verification_status") == "verified"
+            and rule.get("document_id")
+            and rule.get("article_id")
+            for rule in rules
+        )
+    if requirement_type == "claims_ready":
+        claims = state.get("claims", [])
+        return bool(claims) and all(
+            isinstance(claim, dict)
+            and claim.get("claim_id")
+            and (claim.get("amount") is None or claim.get("calculation_id"))
+            for claim in claims
+        )
+    if requirement_type == "transition_output_artifact":
+        if not transition_output_artifact_ids:
+            return False
+        known = {
+            item.get("artifact_id"): item
+            for item in state.get("artifacts", [])
+            if isinstance(item, dict) and item.get("artifact_id")
+        }
+        return all(
+            artifact_id in known
+            and Path(str(known[artifact_id].get("path", ""))).expanduser().is_file()
+            for artifact_id in transition_output_artifact_ids
+        )
+    if requirement_type == "report_backed_validations":
+        latest: dict[str, dict[str, Any]] = {}
+        for item in state.get("validations", []):
+            if isinstance(item, dict) and isinstance(item.get("kind"), str):
+                latest[item["kind"]] = item
+        return all(
+            kind in latest
+            and latest[kind].get("status") in {"pass", "escalate"}
+            and validation_report_is_valid(latest[kind])
+            for kind in required_validation_kinds(state, graph)
+        )
+    return False
+
+
+def node_requirement_statuses(
+    state: dict[str, Any],
+    graph: dict[str, Any],
+    node: str,
+    transition_output_artifact_ids: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    output_ids = transition_output_artifact_ids or []
+    statuses = []
+    for requirement in requirements_for(graph, node):
+        requirement_id = str(requirement.get("id", ""))
+        met = requirement_is_met(state, graph, requirement, output_ids)
+        waived = (
+            not met
+            and bool(requirement.get("waiver_allowed"))
+            and requirement_waived(state, node, requirement_id)
+        )
+        statuses.append({
+            "id": requirement_id,
+            "met": met,
+            "waived": waived,
+            "waiver_allowed": bool(requirement.get("waiver_allowed")),
+            "message": requirement.get("message", "节点完成条件未满足。"),
+        })
+    return statuses
+
+
+def completed_node_requirement_errors(state: dict[str, Any], graph: dict[str, Any]) -> list[str]:
+    current = state.get("current_node")
+    if not isinstance(current, str):
+        return []
+    latest_runs: dict[str, dict[str, Any]] = {}
+    for run in state.get("node_runs", []):
+        if isinstance(run, dict) and isinstance(run.get("node"), str):
+            latest_runs[run["node"]] = run
+    errors: list[str] = []
+    for node in graph.get("node_requirements", {}):
+        if node == current or current not in forward_descendants(graph, node):
+            continue
+        run = latest_runs.get(node, {})
+        output_ids = run.get("output_artifact_ids", []) if isinstance(run, dict) else []
+        if not isinstance(output_ids, list):
+            output_ids = []
+        for status in node_requirement_statuses(state, graph, node, output_ids):
+            if not status["met"] and not status["waived"]:
+                errors.append(
+                    f"上游节点 {node} 的完成条件 {status['id']} 当前不成立：{status['message']}"
+                )
+    return errors
+
+
+def gate_errors(
+    state: dict[str, Any],
+    graph: dict[str, Any],
+    node: str,
+    event: str,
+    transition_output_artifact_ids: list[str] | None = None,
+) -> list[str]:
     errors: list[str] = []
     errors.extend(workflow_blockers(state, graph))
     if node == "task_intake" and event == "pass":
@@ -177,6 +384,16 @@ def gate_errors(state: dict[str, Any], graph: dict[str, Any], node: str, event: 
             errors.append("缺少已通过的验证类型：" + "、".join(missing) + "。")
     if node == "lawyer_approval" and event == "approved" and not latest_gate_approved(state, "lawyer_approval"):
         errors.append("缺少 lawyer_approval 的律师批准记录。")
+    completes_requirements = event == "pass" or (node == "validation" and event == "escalate")
+    if completes_requirements:
+        for status in node_requirement_statuses(
+            state,
+            graph,
+            node,
+            transition_output_artifact_ids,
+        ):
+            if not status["met"] and not status["waived"]:
+                errors.append(f"节点完成条件 {status['id']} 未满足：{status['message']}")
     return errors
 
 
@@ -192,6 +409,7 @@ def command_route(args: argparse.Namespace) -> int:
         "risk_level": state["risk_level"],
         "allowed_transitions": [] if blockers else transitions_for(graph, node),
         "required_validations": required_validation_kinds(state, graph),
+        "node_requirements": node_requirement_statuses(state, graph, node),
         "paused": state["paused"],
         "blockers": blockers,
         "required_user_confirmations": required_user_confirmations,
@@ -240,7 +458,7 @@ def command_transition(args: argparse.Namespace) -> int:
         synthetic_escalation = True
     if len(matches) != 1:
         fail(f"节点 {node} 不存在唯一的 {args.event} 转换。")
-    errors = gate_errors(state, graph, node, args.event)
+    errors = gate_errors(state, graph, node, args.event, args.output_artifact)
     if errors:
         fail("门禁未通过：\n" + "\n".join(errors))
 
@@ -327,14 +545,23 @@ def command_record_validation(args: argparse.Namespace) -> int:
         if not report.is_file():
             fail(f"验证报告不存在：{report}")
         payload = read_json(report)
-        if not isinstance(payload, dict) or not isinstance(payload.get("findings", []), list):
-            fail("验证报告必须是含 findings 数组的 JSON object。")
+        if (
+            not isinstance(payload, dict)
+            or "status" not in payload
+            or "findings" not in payload
+            or not isinstance(payload.get("findings"), list)
+        ):
+            fail("验证报告必须是含 status 和 findings 数组的 JSON object。")
         findings = payload.get("findings", [])
         if args.status is None:
             args.status = payload.get("status")
+        elif payload.get("status") and payload.get("status") != args.status:
+            fail("--status 与验证报告中的 status 不一致。")
         report_path = str(report)
     if args.status not in {"pass", "return", "pause", "escalate", "blocked"}:
         fail("必须通过 --status 或报告提供合法验证状态。")
+    if args.status in {"pass", "escalate"} and not report_path:
+        fail("验证结论为 pass 或 escalate 时必须提供含 status 和 findings 的 JSON 报告。")
     record = {
         "validation_id": new_id("validation"), "kind": args.kind, "validator": args.validator,
         "status": args.status, "checked_at": now_iso(), "findings": findings,
@@ -348,6 +575,49 @@ def command_record_validation(args: argparse.Namespace) -> int:
     output = Path(args.output) if args.output else source
     write_state(output, state, source=source, operation=f"validation-{args.kind}")
     print(json.dumps(record, ensure_ascii=False, indent=2))
+    return 0
+
+
+def command_record_waiver(args: argparse.Namespace) -> int:
+    state, graph, source = load(args)
+    node = state["current_node"]
+    requirements = {
+        item.get("id"): item
+        for item in requirements_for(graph, node)
+        if item.get("id")
+    }
+    requirement = requirements.get(args.requirement)
+    if not requirement:
+        fail(f"当前节点 {node} 不存在完成条件 {args.requirement}。")
+    if not requirement.get("waiver_allowed"):
+        fail(f"完成条件 {args.requirement} 不允许豁免。")
+    reason = args.reason.strip()
+    if len(reason) < 8:
+        fail("豁免理由不得为空泛，至少应说明无相应材料或记录的具体原因。")
+    waiver = {
+        "waiver_id": new_id("waiver"),
+        "node": node,
+        "requirement_id": args.requirement,
+        "status": "approved",
+        "reason": reason,
+        "confirmed_by": args.confirmed_by,
+        "confirmed_at": now_iso(),
+    }
+    state.setdefault("node_requirement_waivers", []).append(waiver)
+    state["events"].append({
+        "event_id": new_id("evt"),
+        "event_type": "node_requirement_waiver_recorded",
+        "actor": args.confirmed_by,
+        "occurred_at": waiver["confirmed_at"],
+        "details": {
+            "waiver_id": waiver["waiver_id"],
+            "node": node,
+            "requirement_id": args.requirement,
+        },
+    })
+    output = Path(args.output) if args.output else source
+    write_state(output, state, source=source, operation=f"waiver-{node}-{args.requirement}")
+    print(json.dumps(waiver, ensure_ascii=False, indent=2))
     return 0
 
 
@@ -402,6 +672,13 @@ def parser() -> argparse.ArgumentParser:
     validation.add_argument("--note")
     validation.add_argument("--output", help="默认就地更新 --state，旧状态存入 .casework/history/")
     validation.set_defaults(func=command_record_validation)
+    waiver = sub.add_parser("record-waiver")
+    add_common(waiver)
+    waiver.add_argument("--requirement", required=True)
+    waiver.add_argument("--reason", required=True)
+    waiver.add_argument("--confirmed-by", required=True)
+    waiver.add_argument("--output", help="默认就地更新 --state，旧状态存入 .casework/history/")
+    waiver.set_defaults(func=command_record_waiver)
     return root
 
 

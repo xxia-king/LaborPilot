@@ -2,7 +2,7 @@
 name: LaborPilot
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.1.0"
+version: "1.2.0"
 license: AGPL-3.0
 description: 中国劳动争议智能办案引擎。输入案件材料,产出法律分析、金额计算和仲裁文书。内置96个争点知识卡(全国规则+浙江地方口径双层,地方口径依据浙江省现行规定编译)。当用户需要分析劳动争议案件、计算经济补偿/赔偿金/加班费/工伤待遇、生成仲裁申请书或证据清单时使用。产出的所有分析结果和法律文书均由AI辅助生成,仅供参考,必须经专业律师审核后方可使用。
 ---
@@ -48,6 +48,13 @@ description: 中国劳动争议智能办案引擎。输入案件材料,产出法
 
 核心知识组件和办案逻辑可离线使用；生成 `.docx` 文书需要本机安装 [Pandoc](https://pandoc.org)。材料读取、扫描件 OCR、法律法规及案例核验等环节，可按具体任务调用运行环境已有或用户自行配置的外部能力。本技能不绑定具体的 OCR、法律数据库、MCP 或其他服务。
 
+## 所需权限与安全说明
+
+- 读取用户明确指定的案件材料、案件状态和模板；在案件目录写入 `.casework/` 内部状态、历史、验证记录及用户要求的成果文件。
+- 执行本插件内的本地 Python 脚本；生成 `.docx` 时以参数数组调用本机 Pandoc，不使用 shell 拼接命令。
+- 核心流程不要求网络或环境变量凭据。OCR、法律数据库或 MCP 属于运行环境的外部能力，只有具体任务需要且符合用户授权时才调用。
+- 案件材料默认本地处理；不得把密钥、真实当事人敏感信息或私有知识数据写入代码仓库。
+
 ## 用法
 
 ```bash
@@ -57,4 +64,6 @@ python3 scripts/generate_docs.py --case my_case.json --output ./output
 
 ## 工作流
 
-task_intake → material_ingestion → issue_analysis → evidence ∥ authority → claims_procedure → drafting → validation → lawyer_approval
+task_intake → material_ingestion → intake → issue_analysis → evidence ∥ authority → claims_procedure → drafting → validation → lawyer_approval
+
+每次节点转换由 `workflow/graph.json` 中的机器完成条件约束；空的材料、事实、争点、证据、法源、请求、初稿或验证状态不得直接进入下游。任务确实只基于自然语言且没有相应文件或证据时，须在用户明确确认后使用 `record-waiver` 登记结构化豁免；初稿真实产物与 JSON 验证报告不得豁免。

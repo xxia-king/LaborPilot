@@ -3,7 +3,7 @@ name: labor-authority-research
 description: 劳动争议法律法规、规范性文件和浙江地方口径的检索与引用校验。当需要按争点、法规名、文号、条号、地域、时间效力检索，或核验 document_id、article_id、页码和效力状态时使用。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.1.0"
+version: "1.2.0"
 license: AGPL-3.0
 ---
 
@@ -15,5 +15,6 @@ license: AGPL-3.0
 4. 根据 `analysis_date` 校验新旧法、废止状态和适用条件。
 5. 法源异常、已废止规则或汇编原文疑点必须显式警示，不静默修正。
 6. 无法通过权威来源核验的内容标记“待核验”，不得作为正式引用。
+7. 完成节点前，将正式采用的法源以唯一 `rule_id`、`verification_status=verified`、`document_id` 和 `article_id` 写入 `rules[]`；仅有检索线索或待核验条文不得通过节点。
 
 已验证法源、适用条件与浙江口径写入 `01_案件研判报告_vN.md`；索引、检索 JSON 和引用校验结果存入 `.casework/authority/`，不单独向用户交付“法源检索记录”。

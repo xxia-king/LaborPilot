@@ -3,6 +3,7 @@
 ## 机器报告契约
 
 - `record-validation --report` 只接受 JSON object，顶层必须包含 `status` 和 `findings` 数组。
+- 验证结论为 `pass` 或 `escalate` 时必须提供上述 JSON 报告；仅在命令行自报状态而不附报告会被拒绝。
 - Markdown 可作人读附件，但不得代替 JSON 状态记录。
 - `findings` 至少保留问题 ID、严重程度、描述、处理方式和受影响节点。
 

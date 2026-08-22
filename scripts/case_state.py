@@ -26,6 +26,7 @@ FACT_STATUSES = {"supported", "client_statement", "opponent_allegation", "disput
 RISK_LEVELS = {"standard", "complex", "high"}
 BUSINESS_ARRAYS = ["parties", "goals", "facts", "materials", "issues", "evidence", "rules", "claims", "deadlines", "decisions", "deliverables"]
 GRAPH_ARRAYS = ["node_runs", "validations", "approvals", "checkpoints", "artifacts", "events"]
+OPTIONAL_GRAPH_ARRAYS = ["node_requirement_waivers"]
 
 
 def fail(message: str, code: int = 2) -> None:
@@ -142,6 +143,9 @@ def validate_state(state: Any) -> list[str]:
     for key in BUSINESS_ARRAYS + GRAPH_ARRAYS:
         if not isinstance(state.get(key), list):
             errors.append(f"{key} 必须是数组。")
+    for key in OPTIONAL_GRAPH_ARRAYS:
+        if key in state and not isinstance(state.get(key), list):
+            errors.append(f"{key} 必须是数组。")
     if "next_action" not in state:
         errors.append("缺少 next_action。")
     task_context = state.get("task_context")
@@ -156,6 +160,7 @@ def validate_state(state: Any) -> list[str]:
         (state.get("checkpoints"), "checkpoint_id", "checkpoints"),
         (state.get("artifacts"), "artifact_id", "artifacts"),
         (state.get("events"), "event_id", "events"),
+        (state.get("node_requirement_waivers", []), "waiver_id", "node_requirement_waivers"),
     ]:
         check_unique_ids(items, key, label, errors)
 
@@ -174,6 +179,16 @@ def validate_state(state: Any) -> list[str]:
         for key in ("decision", "confirmed_on", "confirmed_by"):
             if not decision.get(key):
                 errors.append(f"decisions[{index}] 缺少 {key}。")
+    for index, waiver in enumerate(state.get("node_requirement_waivers", []) if isinstance(state.get("node_requirement_waivers", []), list) else []):
+        if not isinstance(waiver, dict):
+            continue
+        for key in ("node", "requirement_id", "reason", "confirmed_by", "confirmed_at"):
+            if not isinstance(waiver.get(key), str) or not waiver[key].strip():
+                errors.append(f"node_requirement_waivers[{index}] 缺少 {key}。")
+        if waiver.get("status") != "approved":
+            errors.append(f"node_requirement_waivers[{index}].status 必须为 approved。")
+        if isinstance(waiver.get("reason"), str) and len(waiver["reason"].strip()) < 8:
+            errors.append(f"node_requirement_waivers[{index}].reason 过于空泛。")
     return errors
 
 
@@ -201,6 +216,7 @@ def initial_state(args: argparse.Namespace) -> dict[str, Any]:
         "parties": [], "goals": [], "facts": [], "materials": [], "issues": [],
         "evidence": [], "rules": [], "claims": [], "deadlines": [], "decisions": [], "deliverables": [],
         "node_runs": [], "validations": [], "approvals": [], "checkpoints": [], "artifacts": [],
+        "node_requirement_waivers": [],
         "events": [{
             "event_id": new_id("evt"), "event_type": "state_initialized", "actor": args.actor,
             "occurred_at": created_at, "details": {"schema_version": SCHEMA_VERSION}
@@ -242,6 +258,8 @@ def migrate_v1(state: dict[str, Any], actor: str) -> dict[str, Any]:
         "confirmed_by": None, "confirmed_at": None,
     }
     for key in GRAPH_ARRAYS:
+        migrated[key] = []
+    for key in OPTIONAL_GRAPH_ARRAYS:
         migrated[key] = []
     migrated["events"].append({
         "event_id": new_id("evt"), "event_type": "state_migrated", "actor": actor,

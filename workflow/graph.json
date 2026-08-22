@@ -1,5 +1,5 @@
 {
-  "graph_version": "1.1",
+  "graph_version": "1.2",
   "entry_node": "task_intake",
   "terminal_node": "stage_close",
   "transitions": [
@@ -34,5 +34,77 @@
   "approval_gates": {
     "strategy_approval": ["representation", "stage", "requested_document", "provisional_strategy"],
     "lawyer_approval": ["validated_draft", "residual_risks", "submission_decision"]
+  },
+  "node_requirements": {
+    "material_ingestion": [
+      {
+        "id": "traceable_material",
+        "type": "traceable_material",
+        "waiver_allowed": true,
+        "message": "至少登记一份具有 material_id、来源路径和 SHA-256 的可追溯材料。"
+      }
+    ],
+    "intake": [
+      {
+        "id": "structured_fact",
+        "type": "non_empty_collection",
+        "collection": "facts",
+        "id_key": "fact_id",
+        "waiver_allowed": true,
+        "message": "至少登记一条结构化事实。"
+      }
+    ],
+    "issue_analysis": [
+      {
+        "id": "structured_issue",
+        "type": "non_empty_collection",
+        "collection": "issues",
+        "id_key": "issue_id",
+        "waiver_allowed": true,
+        "message": "至少登记一个结构化争点。"
+      }
+    ],
+    "evidence_analysis": [
+      {
+        "id": "structured_evidence",
+        "type": "non_empty_collection",
+        "collection": "evidence",
+        "id_key": "evidence_id",
+        "waiver_allowed": true,
+        "message": "至少登记一条证据、证据缺口或举证责任记录。"
+      }
+    ],
+    "authority_research": [
+      {
+        "id": "verified_authority",
+        "type": "verified_authority",
+        "waiver_allowed": true,
+        "message": "至少登记一条已核验且具有法规与条文锚点的法源。"
+      }
+    ],
+    "claims_procedure": [
+      {
+        "id": "structured_claim",
+        "type": "claims_ready",
+        "waiver_allowed": true,
+        "message": "至少登记一个请求或抗辩；金额型项目必须关联 calculation_id。"
+      }
+    ],
+    "drafting": [
+      {
+        "id": "draft_artifact",
+        "type": "transition_output_artifact",
+        "waiver_allowed": false,
+        "message": "必须登记真实存在的初稿产物，并在通过节点时以 --output-artifact 明确关联。"
+      }
+    ],
+    "validation": [
+      {
+        "id": "report_backed_validations",
+        "type": "report_backed_validations",
+        "waiver_allowed": false,
+        "message": "全部必需验证类型必须关联真实存在的 JSON 报告；正常通过时均为 pass，升级律师时可为 escalate。"
+      }
+    ]
   }
 }

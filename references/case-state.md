@@ -29,7 +29,10 @@
 - `approvals`：策略审批和律师交付审批。
 - `checkpoints` 与 `paused`：暂停原因、恢复条件和恢复位置。
 - `artifacts`：产物路径、版本、SHA-256、生成者、生成时间和上游产物。
+- `node_requirement_waivers`：用户明确确认的节点完成条件豁免，至少记录节点、条件编号、具体理由、确认人与时间；空备注不构成豁免。
 - `events`：只追加不静默改写的审计日志。
+
+节点通过时，工作图会检查 `materials`、`facts`、`issues`、`evidence`、`rules`、`claims`、`artifacts` 和 `validations` 中对应的结构化记录。即使手工把 `current_node` 改到下游，独立验证仍会重新检查全部上游完成条件。
 
 ## 版本与迁移
 
