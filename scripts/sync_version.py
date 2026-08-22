@@ -2,8 +2,9 @@
 # -*- coding: utf-8 -*-
 """同步并校验 LaborPilot 整包版本号。
 
-VERSION 是唯一版本源。同步范围包括根 SKILL、全部子 Skill 和 Codex
-Plugin 清单；校验时还要求 CHANGELOG 的最新版本与 VERSION 一致。
+VERSION 是唯一版本源。同步范围包括 README 版本徽章、根 SKILL、全部
+子 Skill 和 Codex Plugin 清单；校验时还要求 CHANGELOG 的最新版本与
+VERSION 一致。
 """
 
 from __future__ import annotations
@@ -20,6 +21,11 @@ SEMVER_PATTERN = re.compile(
     r"^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)"
     r"(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
 )
+README_BADGE_PATTERN = re.compile(
+    r"(\[!\[Version\]\(https://img\.shields\.io/badge/version-v)"
+    r"(.+?)"
+    r"(-brightgreen\.svg\)\]\(\./CHANGELOG\.md\))"
+)
 
 
 def validate_semver(version: str) -> str:
@@ -35,6 +41,15 @@ def skill_files(root: Path) -> list[Path]:
     files = [root / "SKILL.md"]
     files.extend(sorted((root / "skills").glob("*/SKILL.md")))
     return files
+
+
+def _readme_version(path: Path) -> tuple[str, str]:
+    """读取 README 中唯一的版本徽章。"""
+    text = path.read_text(encoding="utf-8")
+    matches = list(README_BADGE_PATTERN.finditer(text))
+    if len(matches) != 1:
+        raise ValueError(f"README 必须包含且仅包含一个标准版本徽章：{path}")
+    return text, matches[0].group(2)
 
 
 def _frontmatter_version(path: Path) -> tuple[list[str], int, str]:
@@ -70,13 +85,15 @@ def read_version(root: Path = ROOT) -> str:
 
 
 def set_version(root: Path, version: str) -> list[Path]:
-    """将版本号同步到 VERSION、Plugin 清单和全部 Skill。"""
+    """将版本号同步到 VERSION、README、Plugin 清单和全部 Skill。"""
     normalized = validate_semver(version)
     changed: list[Path] = []
 
     # 写入前先读取并校验全部目标，避免中途失败留下半同步状态。
     manifest_path = root / ".codex-plugin" / "plugin.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    readme_path = root / "README.md"
+    readme_text, readme_version = _readme_version(readme_path)
     skill_states = [
         (path, *_frontmatter_version(path))
         for path in skill_files(root)
@@ -95,6 +112,15 @@ def set_version(root: Path, version: str) -> list[Path]:
             encoding="utf-8",
         )
         changed.append(manifest_path)
+
+    if readme_version != normalized:
+        readme_text = README_BADGE_PATTERN.sub(
+            lambda match: f"{match.group(1)}{normalized}{match.group(3)}",
+            readme_text,
+            count=1,
+        )
+        readme_path.write_text(readme_text, encoding="utf-8")
+        changed.append(readme_path)
 
     for path, lines, index, current in skill_states:
         if current == normalized:
@@ -126,6 +152,14 @@ def consistency_issues(root: Path = ROOT) -> list[str]:
             )
     except (OSError, json.JSONDecodeError) as exc:
         issues.append(f"无法读取 {manifest_path.relative_to(root)}：{exc}")
+
+    readme_path = root / "README.md"
+    try:
+        _, current = _readme_version(readme_path)
+        if current != version:
+            issues.append(f"README.md：{current!r}，应为 {version!r}")
+    except (OSError, ValueError) as exc:
+        issues.append(str(exc))
 
     for path in skill_files(root):
         try:

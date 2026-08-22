@@ -26,6 +26,12 @@ def _write_fixture(root: Path) -> None:
         json.dumps({"name": "Fixture", "version": "0.1.0"}, indent=2) + "\n",
         encoding="utf-8",
     )
+    (root / "README.md").write_text(
+        "# Fixture\n\n"
+        "[![Version](https://img.shields.io/badge/version-v0.1.0-brightgreen.svg)]"
+        "(./CHANGELOG.md)\n",
+        encoding="utf-8",
+    )
     skill_text = (
         "---\n"
         "name: fixture\n"
@@ -52,12 +58,16 @@ class VersionSyncTest(unittest.TestCase):
 
             changed = SYNC.set_version(root, "1.2.3")
 
-            self.assertEqual(len(changed), 4)
+            self.assertEqual(len(changed), 5)
             self.assertEqual((root / "VERSION").read_text(encoding="utf-8"), "1.2.3\n")
             manifest = json.loads(
                 (root / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
             )
             self.assertEqual(manifest["version"], "1.2.3")
+            self.assertIn(
+                "version-v1.2.3-brightgreen.svg",
+                (root / "README.md").read_text(encoding="utf-8"),
+            )
             for path in SYNC.skill_files(root):
                 text = path.read_text(encoding="utf-8")
                 self.assertIn('version: "1.2.3"', text)
@@ -72,6 +82,23 @@ class VersionSyncTest(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(SYNC.consistency_issues(root), [])
+
+    def test_readme_version_is_checked(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            _write_fixture(root)
+            (root / "README.md").write_text(
+                "# Fixture\n\n"
+                "[![Version](https://img.shields.io/badge/version-v9.9.9-brightgreen.svg)]"
+                "(./CHANGELOG.md)\n",
+                encoding="utf-8",
+            )
+
+            issues = SYNC.consistency_issues(root)
+
+            self.assertEqual(len(issues), 1)
+            self.assertIn("README.md", issues[0])
+            self.assertIn("9.9.9", issues[0])
 
     def test_invalid_version_is_rejected_before_writing(self):
         with tempfile.TemporaryDirectory() as temp_dir:
