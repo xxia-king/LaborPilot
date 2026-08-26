@@ -1,8 +1,8 @@
 # AI 工作台账
 
-## 2026-08-27｜neat-freak 发布候选收尾（待人工复核）
+## 2026-08-27｜neat-freak 发布收尾（待人工复核）
 
-- 2026-08-27｜Codex｜完成 LaborPilot 1.3.0 文档、任务痕迹、版本和独立公开包对齐审查，未 commit、未 push｜session：`2026-08-27-laborpilot-1.3.0-neat-freak`｜AI 生成，待人工复核｜详见 `.agent/runs/2026-08-27-laborpilot-1.3.0-neat-freak.md`。
+- 2026-08-27｜Codex｜完成 LaborPilot 1.3.0 文档、版本、独立公开包和发布门禁审查；提交并推送后，GitHub 双 Python CI 与自动发布工作流通过，`v1.3.0` Release 已发布｜session：`2026-08-27-laborpilot-1.3.0-neat-freak`｜AI 生成，待人工复核｜详见 `.agent/runs/2026-08-27-laborpilot-1.3.0-neat-freak.md`。
 
 ## 2026-08-26｜LaborPilot 1.3.0 发布候选（未发布）
 
