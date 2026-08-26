@@ -2,7 +2,7 @@
 
 > 劳动争议智能办案引擎(全国规则 + 浙江口径)——149 部法规文献提炼为 96 张争点知识卡,内嵌分发
 
-[![Version](https://img.shields.io/badge/version-v1.2.0-brightgreen.svg)](./CHANGELOG.md) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Version](https://img.shields.io/badge/version-v1.3.0-brightgreen.svg)](./CHANGELOG.md) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 **⚠️ 免责声明:本引擎产出的所有分析结果和法律文书均由 AI 辅助生成,仅供参考,不构成法律意见,必须经专业律师审核后方可使用。**
 
@@ -21,27 +21,38 @@ LaborPilot 的核心价值在于内置数据：作者系统梳理 149 部劳动�
 | 能力    | 说明                                                      |
 | ----- | ------------------------------------------------------- |
 | 内置知识库 | 从 149 部法规文献提炼融合的 96 卡争点知识体系,随引擎离线分发,开箱即用                |
-| 争点识别  | 96 个争点知识卡,按《民事案件案由规定》组织为 23 个案由门,自动匹配案件事实与法律争点          |
+| 材料接入  | 本地计算原件哈希、识别文件类型与文字层、生成派生文本和材料索引；扫描材料路由至外部 OCR |
+| 事实时间轴 | 将经标注事实和材料日期句写入可追溯时间轴，区分已证事实、双方陈述、争议事实和待核实事项   |
+| 争点识别  | 96 张知识卡按《民事案件案由规定》组织；14 张案由门卡承载 22 项细分案由和 1 个兜底运行路由，共 23 类，自动匹配案件事实与法律争点 |
 | 请求权分析 | 逐项审查构成要件、举证责任分配、对方抗辩路径                                  |
 | 金额计算  | 经济补偿(N/N+1/2N)、加班工资(150%/200%/300%)、工伤保险待遇(三笔一次性)等,精确到分 |
 | 浙江口径  | 浙江高院解答一至七、疑难纪要、仲裁指导意见的提炼与引用                             |
 | 文书生成  | 仲裁申请书、证据清单、行动清单,输出 .docx 格式                             |
+| 交付追溯  | 正式产物可反查业务来源、上游产物、版本、文件哈希、验证报告和律师审批                   |
 
 ## 内置知识体系
 
 区别于依赖联网检索、或要求用户自备数据库的法律 AI 工具,LaborPilot 将 149 部法规文献提炼融合为争点知识卡,编译嵌入引擎本体:
 
-* **149 部法规文献为源**:覆盖国家法律(劳动法、劳动合同法、社会保险法等)、行政法规(工伤保险条例、保障农民工工资支付条例等)、部门规章及规范性文件、最高人民法院司法解释(含《劳动争议司法解释(一)》《(二)》)与裁审衔接文件,以及 63 件浙江省地方性规定与裁判口径文件(浙江高院意见、疑难问题讨论纪要、高院民一庭与省仲裁院解答一至七、仲裁委系列办案文件)
+* **149 部法规文献为源**:覆盖国家法律(劳动法、劳动合同法、社会保险法等)、行政法规(工伤保险条例、保障农民工工资支付条例等)、部门规章及规范性文件、最高人民法院司法解释(含《劳动争议司法解释(一)》《(二)》)与裁审衔接文件,以及浙江省地方性规定与裁判口径文件(浙江高院意见、疑难问题讨论纪要、高院民一庭与省仲裁院解答一至七、仲裁委系列办案文件)。按来源文件标题是否含“浙江”统计，其中 63 份归入浙江范围清单
 
-* **提炼融合为 96 卡**:按《民事案件案由规定》体系归纳争点,融合为 96 张知识卡(82 争点卡 + 14 案由门卡)。每张争点卡包含构成要件、法律依据(条文号)、举证责任分配、计算公式、仲裁时效、地方裁判口径、文书模板指向七个维度
+* **提炼融合为 96 卡**:按《民事案件案由规定》体系归纳争点,融合为 96 张知识卡(82 争点卡 + 14 案由门卡)。14 张案由门卡承载 22 项细分案由和 1 个劳动合同纠纷兜底运行路由，共 23 类。每张争点卡包含构成要件、法律依据(条文号)、举证责任分配、计算公式、仲裁时效、地方裁判口径、文书模板指向七个维度
 
-* **浙江口径全覆盖**:63 件浙江文件的地方规则全部融入对应争点,96 卡中 80 卡内置浙江裁判口径
+* **浙江口径覆盖**:按上述标题口径统计的 63 份来源纳入构建清单,96 卡中 80 卡内置浙江裁判口径
 
 * **更新至最新规则**:已纳入《劳动争议司法解释(二)》(法释〔2025〕12 号)及最高人民法院第 42 批指导性案例(新就业形态劳动关系认定)
 
-知识数据已编译嵌入引擎,离线可用,版本随仓库发布统一更新。
+知识数据已编译嵌入引擎,离线可用,版本随仓库发布统一更新。当前统计口径及哈希承诺见[知识构建统计清单](data/knowledge-build-stats.json)：
+
+```bash
+python3 scripts/knowledge_stats.py
+```
+
+该命令可在公开包中复算当前编译载荷及清单内部一致性；开发环境额外提供来源目录时，可通过 `--source-dir` 复核 149 份来源文件。公开清单不包含来源标题、路径、正文或完整知识卡数据。
 
 ## 安装
+
+运行脚本和测试需要 Python 3.11 或更高版本（推荐 3.12）；macOS 系统自带的 Python 3.9 不受支持。开始前请先运行 `python3 --version` 确认当前解释器版本。
 
 ```bash
 git clone https://github.com/xxia-king/LaborPilot.git
@@ -55,6 +66,8 @@ LaborPilot 聚焦劳动争议案件的争点分析、证据审查、金额计算
 完整办案过程中，材料读取、扫描件 OCR、法律法规及案例核验等环节可能需要调用运行环境已有或用户自行配置的外部能力。LaborPilot 不绑定具体的 OCR、法律数据库、MCP 或其他服务。
 
 ## 使用
+
+下列命令均在 LaborPilot 仓库根目录执行。
 
 ### 输入
 
@@ -81,8 +94,17 @@ LaborPilot 聚焦劳动争议案件的争点分析、证据审查、金额计算
 ### 产出
 
 ```bash
-python3 scripts/generate_docs.py --case my_case.json --output ./output
+python3 scripts/generate_docs.py \
+  --case my_case.json \
+  --output <case-root> \
+  --types 仲裁申请书,证据清单 \
+  --delivery-status lawyer_review_draft \
+  --strict
 ```
+
+只生成用户明确要求的文书。律师复核初稿进入 `<case-root>/01_律师复核初稿/`，内部 Markdown 和版式报告进入 `<case-root>/.casework/drafting/`；已有同版本文件不会被覆盖。生成器在 Pandoc 转换后确定性应用并校验 JLS Word 版式，正式 DOCX 使用 `仿宋_GB2312`、固定 25 磅行距及相应标题、正文、表格和落款规则。
+
+最终提交版须直接派生自当前文件哈希已获律师批准的初稿，并作为新文件进入 `<case-root>/02_最终提交版/`，重新完成版式、业务验证和律师审批。生成时须显式提供 `--delivery-status final_submission --approved-by <律师姓名>`；行动清单及仍含内部待确认标记的内容不能生成最终提交版。
 
 | 产出物     | 格式    | 内容                   |
 | ------- | ----- | -------------------- |
@@ -95,6 +117,131 @@ python3 scripts/generate_docs.py --case my_case.json --output ./output
 ### 办案中的争点识别
 
 LaborPilot 在处理具体案件时，内部调用编译知识组件匹配相关法律争点，匹配范围按案件需要动态确定。系统将构成要件、举证责任、法律依据、浙江口径、计算规则和风险提示融入案件分析。知识卡不作为独立卡片或完整原始数据对外输出。
+
+### 材料接入、事实时间轴、争点与证据矩阵
+
+```bash
+python3 scripts/ingest_materials.py \
+  --state <case-root>/.casework/case_state.json \
+  --source <材料路径>
+
+python3 scripts/build_timeline.py \
+  --state <case-root>/.casework/case_state.json \
+  --input <事实候选.json> \
+  --extract-from-materials
+
+# 先从本案任务与事实中发现待复核争点
+python3 scripts/build_issue_matrix.py \
+  --state <case-root>/.casework/case_state.json \
+  --discover
+
+# Agent／律师补齐双方路径后，写入正式请求／抗辩矩阵
+python3 scripts/build_issue_matrix.py \
+  --state <case-root>/.casework/case_state.json \
+  --input <经复核的争点矩阵.json>
+
+# 按每个争点要件生成待复核证据链骨架
+python3 scripts/build_evidence_chain.py \
+  --state <case-root>/.casework/case_state.json \
+  --scaffold
+
+# Agent／律师复核证据与举证责任后，回写正式证据链
+python3 scripts/build_evidence_chain.py \
+  --state <case-root>/.casework/case_state.json \
+  --input <经复核的证据链.json>
+
+# 按争点要件生成待核验法源任务
+python3 scripts/build_authorities.py \
+  --state <case-root>/.casework/case_state.json \
+  --scaffold
+
+# 将官方来源或法律数据库的经复核结果写入法源矩阵
+python3 scripts/build_authorities.py \
+  --state <case-root>/.casework/case_state.json \
+  --input <经复核的法源核验结果.json>
+```
+
+材料执行器不改动原件，在 `.casework/materials/` 保存逐材料接入记录、SHA-256、文字层／OCR 路由、派生文本和索引。事实执行器将显式标注事实与材料中的日期句写入 `.casework/intake/`；自动提取内容始终标记为待核实，`supported` 事实必须关联已登记材料。相互矛盾的事实以双向关系记录冲突状态、说明和待核实行动；未解决冲突不得静默标记为已证事实。身份证号和手机号不写入事实状态。
+
+争点发现只将有限的知识片段写入 `.casework/issue_analysis/discovery.*`，状态始终为待复核，不会自动写入 `issues[]`。正式矩阵必须按代理立场写明我方路径、构成要件及 `fact_id`、支持状态与缺口、对方最强观点与回应、备选路径及失败后果；只有这些字段完整且引用真实存在的事实／证据／法源 ID 时，才能通过争点节点。
+
+证据链骨架只用于复核，不会写入 `evidence[]`或解锁证据节点。正式证据矩阵必须覆盖每个争点构成要件，并记录待证命题、证据方向、事实与材料链接、初始举证主体、证据控制方、责任转移、不利后果、证据缺口和补证行动。完全缺证时仍须建立缺口链，不能以空记录或豁免代替；证据评估为充分时，至少要有一项已关联真实材料且真实性状态已明确的可用证据。
+
+法源骨架同样只生成待核验任务，内置知识不会被自动标记为已验证引用。正式法源矩阵不绑定某一 OCR、MCP 或法律数据库，但要求外部核验结果保存法律全称、制定机关、文号、条号、完整条文及哈希、官方来源或法律数据库 URL、检索时间、效力起止、地域范围、本案相关日期和适用理由。每个争点构成要件都必须关联至少一条已核验且适用的法源；待核验、地域错配、未生效或效力未明的规则不能作为正式采用依据。
+
+### 专业金额计算、时效与程序路径
+
+```bash
+# 按已复核争点生成待确认的金额计算骨架
+python3 scripts/calculate_claims.py \
+  --state <case-root>/.casework/case_state.json \
+  --scaffold
+
+# 以经复核输入执行计算并生成金额台账
+python3 scripts/calculate_claims.py \
+  --state <case-root>/.casework/case_state.json \
+  --input <经复核的计算输入.json>
+
+# 需要年度社平工资等动态参数时，追加经核验的版本化参数包
+python3 scripts/calculate_claims.py \
+  --state <case-root>/.casework/case_state.json \
+  --input <经复核的计算输入.json> \
+  --parameter-package <参数包.json>
+
+# 按每个已复核争点生成待复核的程序分析骨架
+python3 scripts/analyze_procedure.py \
+  --state <case-root>/.casework/case_state.json \
+  --scaffold
+
+# 将律师／Agent 复核后的程序结论写入台账
+python3 scripts/analyze_procedure.py \
+  --state <case-root>/.casework/case_state.json \
+  --input <经复核的程序分析.json>
+```
+
+计算器支持经济补偿 N、N＋1、违法解除赔偿金 2N，工作日／休息日／法定节假日加班工资，一次性伤残补助金、伤残津贴、地域工伤待遇及三笔一次性待遇合计、竞业限制补偿和金额合计。公式由律师或 Agent 根据已经核验的事实和法律适用结果选择，脚本负责校验输入并执行算术，不自行判断请求权是否成立，也不在 N、N＋1、2N 之间自动择高。
+
+每个数值输入必须关联案件状态中已登记的来源；需要三倍社平工资封顶时，须明确确认封顶是否适用，并在适用时引用覆盖本案日期和地域的参数包。存在 `pending_inputs` 时只保留待确认状态，不生成金额、算式或中间步骤，也不能通过金额节点。计算完成后，`.casework/calculations/ledger.json` 与 `ledger.md` 保存公式版本、输入来源、法源、参数包版本及哈希、中间步骤、舍入口径、金额和风险；独立验证器会重新计算并拦截输入字段错误、参数错配或金额篡改。
+
+程序分析骨架只用于待复核提示，不会自动写入案件结论。正式台账对每个已复核争点记录时效状态及起算日／截止日、受理机构与案件地域、一裁终局、先予执行或其他临时救济、后续起诉／撤销／执行等救济路径、法源、待确认项和风险，并绑定当前分析日及内容摘要。所引法源必须已核验、已采用且适用于对应争点；脚本不替律师选择程序策略。
+
+金额计算和程序分析是 `claims_procedure` 的两组独立完成条件。每个已复核争点都必须有完整程序分析，且不得存在待确认项；任一条件不满足都不能进入策略审批，程序门禁不得豁免。
+
+### 独立验证
+
+```bash
+python3 scripts/validate_case.py \
+  --state <case-root>/.casework/case_state.json \
+  --output <case-root>/.casework/validation/deterministic.json
+
+python3 scripts/adversarial_validation.py \
+  --state <case-root>/.casework/case_state.json \
+  --output <case-root>/.casework/validation/adversarial.json
+
+python3 scripts/workflow_graph.py record-validation \
+  --state <case-root>/.casework/case_state.json \
+  --kind adversarial \
+  --validator laborpilot-adversarial-validator \
+  --report <case-root>/.casework/validation/adversarial.json
+```
+
+确定性验证器检查状态、材料、引用、法源、金额、程序、产物和工作图一致性；对抗验证器逐争点生成挑战矩阵，并以六项可重算检查核对对方最强论证及回应、失败边界、事实分层、事实冲突、引用一致性和程序完整性。未解决冲突会退回核实；缺少时效、管辖、一裁终局、临时救济或后续救济路径，以及程序摘要被篡改，都会阻断通过。对抗报告绑定包含事实与程序状态的业务摘要，登记时重新计算并保存报告 SHA-256；任意拼装、已经过期或登记后被修改的报告不能解锁验证节点。验证器只负责暴露问题，不修改初稿后自行宣告通过，最终交付仍须律师审批。
+
+### 端到端回归
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests/test_end_to_end_casework.py -v
+```
+
+该回归使用完全虚构的当事人与材料，依次执行任务确认、材料接入、事实时间轴、争点矩阵、证据链、法源适配、金额计算、策略审批、真实 Pandoc 文书转换、产物登记、确定性与对抗验证、律师审批和阶段回写。测试会打开生成的 DOCX，断言其中确实包含虚构当事人及计算所得的 70,000.00 元请求，而不是只检查文件是否存在。内部 Markdown 写入 `.casework/drafting/`，案件根目录只保留 `.docx`；这项回归证明办案链可以真实走通，不代替最终提交版的 JLS Word 版式验收。
+
+### 领域与法律版本评测
+
+```bash
+python3 scripts/domain_eval.py
+```
+
+评测数据按 `dataset_version` 维护，覆盖单一争点、复合争点、否定语境、非劳动争议和法律版本生效边界。每次调整争点路由或法律口径时，应同步增加或修订用例并递增数据集版本。公开评测报告只输出用例标识、结果数量、数据集哈希和问题，不输出完整知识卡、内部卡号或案由门标识。
 
 ## 争点覆盖
 

@@ -566,17 +566,25 @@ _INTENT_PROFILES = (
         "core_issue_terms": ("违法解除", "2N"),
     },
     {
-        "triggers": ("加班", "法定节假日上班", "每周工作6天", "每天10小时"),
+        "triggers": (
+            "加班", "没有加班费", "未支付加班费", "拖欠加班费",
+            "法定节假日上班", "每周工作6天", "每天10小时",
+        ),
         "expansions": ("加班费", "平时150%", "休息日200%", "法定节假日300%", "计算基数", "折算"),
         "core_issue_terms": ("加班费", "计算基数"),
     },
     {
-        "triggers": ("未签订书面劳动合同", "未签书面合同", "一直未签", "二倍工资"),
+        "triggers": (
+            "未签订书面劳动合同", "未签书面合同", "未签劳动合同", "没签劳动合同", "一直未签",
+            "没有签书面劳动合同", "没签书面劳动合同", "二倍工资",
+        ),
         "expansions": ("未签书面合同", "二倍工资", "无固定期限", "仲裁时效"),
         "core_issue_terms": ("未签书面合同", "二倍工资"),
     },
     {
-        "triggers": ("竞业限制", "竞业补偿", "竞业协议"),
+        "triggers": (
+            "竞业限制", "竞业补偿", "没有竞业补偿", "未支付竞业补偿", "竞业协议",
+        ),
         "expansions": ("竞业限制", "补偿标准", "违约金", "保密义务"),
         "core_issue_terms": ("竞业限制", "保密义务"),
     },
@@ -586,7 +594,10 @@ _INTENT_PROFILES = (
         "core_issue_terms": ("一次性伤残待遇", "停工留薪期", "工伤职工解除限制"),
     },
     {
-        "triggers": ("缴纳社会保险", "未缴社保", "未依法缴纳社会保险", "放弃参保", "社保补缴"),
+        "triggers": (
+            "缴纳社会保险", "未缴社保", "未依法缴纳社会保险", "没有缴纳社会保险",
+            "没缴社会保险", "放弃参保", "社保补缴",
+        ),
         "expansions": ("劳动者被迫解除", "经济补偿N", "社保补缴", "未依法缴纳社会保险", "放弃参保"),
         "core_issue_terms": ("劳动者被迫解除", "经济补偿N", "社保补缴"),
     },
@@ -603,13 +614,44 @@ _INTENT_PROFILES = (
 )
 
 
+_NEGATION_PREFIXES = (
+    "不涉及", "不属于", "不是", "并非", "没有发生", "未发生", "不存在", "并无",
+    "无需处理", "不主张", "排除", "没有被", "未被", "没有", "没", "无",
+)
+_NEGATION_SUFFIXES = ("无关", "不在本案范围", "不属于本案", "无需处理")
+_OUT_OF_DOMAIN_MARKERS = ("与劳动关系无关", "不是劳动争议", "不属于劳动争议", "非劳动争议")
+
+
+def _trigger_is_negated(text, start, trigger):
+    """判断命中词是否处在明确排除语境，不把“未签／未缴”等事实本身当成排除。"""
+    prefix = text[max(0, start - 10):start]
+    suffix = text[start + len(trigger):start + len(trigger) + 10]
+    return any(prefix.endswith(marker) for marker in _NEGATION_PREFIXES) or any(
+        suffix.startswith(marker) for marker in _NEGATION_SUFFIXES
+    )
+
+
+def _has_active_trigger(text, trigger):
+    start = text.find(trigger)
+    while start >= 0:
+        if not _trigger_is_negated(text, start, trigger):
+            return True
+        start = text.find(trigger, start + 1)
+    return False
+
+
+def _explicitly_out_of_domain(text):
+    normalized = re.sub(r"\s+", "", text)
+    return any(marker in normalized for marker in _OUT_OF_DOMAIN_MARKERS)
+
+
 def _detected_intents(text):
     """识别常见劳动争议意图，用于补足字面切片难以覆盖的核心争点。"""
     normalized = re.sub(r"\s+", "", text)
     return [
         profile
         for profile in _INTENT_PROFILES
-        if any(trigger in normalized for trigger in profile["triggers"])
+        if any(_has_active_trigger(normalized, trigger) for trigger in profile["triggers"])
     ]
 
 
@@ -660,6 +702,8 @@ def _field_match_score(content, keywords):
 def query_knowledge(text):
     """在脚本内部查询编译知识，按相关性返回任务型片段。"""
     if not isinstance(text, str) or not text.strip():
+        return []
+    if _explicitly_out_of_domain(text):
         return []
     if not _COMPILED_KNOWLEDGE:
         print("ERROR 脚本未包含编译知识载荷，请恢复完整的 LaborPilot 发布包。", file=sys.stderr)

@@ -2,7 +2,7 @@
 name: LaborPilot
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.2.0"
+version: "1.3.0"
 license: AGPL-3.0
 description: 中国劳动争议智能办案引擎。输入案件材料,产出法律分析、金额计算和仲裁文书。内置96个争点知识卡(全国规则+浙江地方口径双层,地方口径依据浙江省现行规定编译)。当用户需要分析劳动争议案件、计算经济补偿/赔偿金/加班费/工伤待遇、生成仲裁申请书或证据清单时使用。产出的所有分析结果和法律文书均由AI辅助生成,仅供参考,必须经专业律师审核后方可使用。
 ---
@@ -46,7 +46,7 @@ description: 中国劳动争议智能办案引擎。输入案件材料,产出法
 
 ## 运行环境与外部能力
 
-核心知识组件和办案逻辑可离线使用；生成 `.docx` 文书需要本机安装 [Pandoc](https://pandoc.org)。材料读取、扫描件 OCR、法律法规及案例核验等环节，可按具体任务调用运行环境已有或用户自行配置的外部能力。本技能不绑定具体的 OCR、法律数据库、MCP 或其他服务。
+运行脚本和测试需要 Python 3.11 或更高版本（推荐 3.12）；macOS 系统自带的 Python 3.9 不受支持。核心知识组件和办案逻辑可离线使用；生成 `.docx` 文书需要本机安装 [Pandoc](https://pandoc.org)。材料读取、扫描件 OCR、法律法规及案例核验等环节，可按具体任务调用运行环境已有或用户自行配置的外部能力。本技能不绑定具体的 OCR、法律数据库、MCP 或其他服务。
 
 ## 所需权限与安全说明
 
@@ -57,13 +57,70 @@ description: 中国劳动争议智能办案引擎。输入案件材料,产出法
 
 ## 用法
 
+以下命令均以 LaborPilot 仓库根目录为当前目录。
+
 ```bash
-# 生成文书(结构化JSON输入)
-python3 scripts/generate_docs.py --case my_case.json --output ./output
+# 接入本地材料并生成可追溯索引
+python3 scripts/ingest_materials.py --state <case-root>/.casework/case_state.json --source <材料路径>
+
+# 将经标注事实及材料日期句整理为事实时间轴
+python3 scripts/build_timeline.py --state <case-root>/.casework/case_state.json --input <事实候选.json> --extract-from-materials
+
+# 生成待复核争点候选；候选不会直接通过争点节点
+python3 scripts/build_issue_matrix.py --state <case-root>/.casework/case_state.json --discover
+
+# 回写已补齐构成要件、双方路径、备选路径和失败后果的正式矩阵
+python3 scripts/build_issue_matrix.py --state <case-root>/.casework/case_state.json --input <经复核的争点矩阵.json>
+
+# 生成逐要件的待复核证据链骨架；骨架不会解锁节点
+python3 scripts/build_evidence_chain.py --state <case-root>/.casework/case_state.json --scaffold
+
+# 回写经复核的证据链、举证责任、缺口和补证行动
+python3 scripts/build_evidence_chain.py --state <case-root>/.casework/case_state.json --input <经复核的证据链.json>
+
+# 生成逐要件的待核验法源任务；内置知识只作检索线索
+python3 scripts/build_authorities.py --state <case-root>/.casework/case_state.json --scaffold
+
+# 适配官方来源或法律数据库的经复核结果
+python3 scripts/build_authorities.py --state <case-root>/.casework/case_state.json --input <经复核的法源核验结果.json>
+
+# 按已复核争点生成待确认的金额计算骨架
+python3 scripts/calculate_claims.py --state <case-root>/.casework/case_state.json --scaffold
+
+# 回写经复核输入并生成可重算金额台账；动态参数可追加 --parameter-package <参数包.json>
+python3 scripts/calculate_claims.py --state <case-root>/.casework/case_state.json --input <经复核的计算输入.json>
+
+# 为每个已复核争点生成待复核程序骨架；骨架不解锁程序节点
+python3 scripts/analyze_procedure.py --state <case-root>/.casework/case_state.json --scaffold
+
+# 回写律师／Agent 复核后的时效、管辖、一裁终局、临时救济和后续救济路径
+python3 scripts/analyze_procedure.py --state <case-root>/.casework/case_state.json --input <经复核的程序分析.json>
+
+# 只生成用户明确要求的律师复核初稿；DOCX 与内部 Markdown 分层存放，已有版本不覆盖
+python3 scripts/generate_docs.py --case my_case.json --output <case-root> --types 仲裁申请书,证据清单 --delivery-status lawyer_review_draft --strict
+
+# 仅在当前初稿已获律师批准后生成新的最终提交版；行动清单和内部待确认标记会被阻断
+python3 scripts/generate_docs.py --case my_case.json --output <case-root> --types 仲裁申请书 --delivery-status final_submission --approved-by <律师姓名> --strict
+
+# 起草后生成绑定当前业务状态的实质性对抗验证报告
+python3 scripts/adversarial_validation.py --state <case-root>/.casework/case_state.json --output <case-root>/.casework/validation/adversarial.json
+
+# 律师审批和阶段回写前，复算正式产物的来源、版本、哈希、验证报告与审批绑定
+python3 scripts/workflow_graph.py trace-artifact --state <case-root>/.casework/case_state.json --artifact-id <正式产物ID>
+
+# 复算当前公开包的知识载荷统计及最小化哈希清单
+python3 scripts/knowledge_stats.py
+
+# 运行版本化的争点召回与法律生效边界评测
+python3 scripts/domain_eval.py
 ```
+
+公开统计复核只输出卡数、路由类别数和检查结果，不输出完整知识卡。公开包可独立复算当前编译载荷与清单内部一致性；149 份来源文件的逐份复核需要开发环境另行提供来源目录。
+
+领域评测以可见的业务结果为断言，并在路由或法律口径变化时同步递增数据集版本。评测数据和报告不得包含内部卡号、案由门标识或完整知识卡内容。
 
 ## 工作流
 
-task_intake → material_ingestion → intake → issue_analysis → evidence ∥ authority → claims_procedure → drafting → validation → lawyer_approval
+task_intake → material_ingestion → intake → issue_analysis → evidence_analysis ∥ authority_research → claims_procedure → strategy_approval → drafting → validation → lawyer_approval → stage_close
 
-每次节点转换由 `workflow/graph.json` 中的机器完成条件约束；空的材料、事实、争点、证据、法源、请求、初稿或验证状态不得直接进入下游。任务确实只基于自然语言且没有相应文件或证据时，须在用户明确确认后使用 `record-waiver` 登记结构化豁免；初稿真实产物与 JSON 验证报告不得豁免。
+每次节点转换由 `workflow/graph.json` 中的机器完成条件约束；空的材料、事实、争点、证据、法源、请求、初稿或验证状态不得直接进入下游。`record-waiver` 只可用于工作图明确允许豁免、且经用户确认的真实任务边界。相互矛盾的事实必须双向记录冲突状态、说明和待核实行动，未解决冲突不得标记为 `supported`，并须在独立验证中退回核实。争点已建立后，每个构成要件都必须有证据链或缺口链，并关联已核验且适用的法源；金额请求必须关联可重算的专业计算记录，且不得存在待确认输入。同一 `claims_procedure` 节点还必须覆盖全部已复核争点的时效、管辖、一裁终局、临时救济和后续救济路径，所引法源必须已核验且适用，并且不得留有待确认项。金额门禁和 `reviewed_procedure_path` 程序门禁均不得豁免。对抗验证报告同时绑定事实冲突与程序分析状态，任一状态变化后旧报告失效。正式产物必须形成“业务来源／上游产物—版本与文件哈希—验证报告—律师审批”的可复算链。证据、法源、金额、程序、初稿真实产物与 JSON 验证报告均不得豁免。

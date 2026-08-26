@@ -3,8 +3,8 @@
 """同步并校验 LaborPilot 整包版本号。
 
 VERSION 是唯一版本源。同步范围包括 README 版本徽章、根 SKILL、全部
-子 Skill 和 Codex Plugin 清单；校验时还要求 CHANGELOG 的最新版本与
-VERSION 一致。
+子 Skill、Codex Plugin 清单、知识构建统计清单和领域评测数据；校验时还要求
+CHANGELOG 的最新版本与 VERSION 一致。
 """
 
 from __future__ import annotations
@@ -85,13 +85,17 @@ def read_version(root: Path = ROOT) -> str:
 
 
 def set_version(root: Path, version: str) -> list[Path]:
-    """将版本号同步到 VERSION、README、Plugin 清单和全部 Skill。"""
+    """将版本号同步到 VERSION、README、Plugin、统计、评测和全部 Skill。"""
     normalized = validate_semver(version)
     changed: list[Path] = []
 
     # 写入前先读取并校验全部目标，避免中途失败留下半同步状态。
     manifest_path = root / ".codex-plugin" / "plugin.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    knowledge_stats_path = root / "data" / "knowledge-build-stats.json"
+    knowledge_stats = json.loads(knowledge_stats_path.read_text(encoding="utf-8"))
+    evals_path = root / "evals" / "evals.json"
+    evals = json.loads(evals_path.read_text(encoding="utf-8"))
     readme_path = root / "README.md"
     readme_text, readme_version = _readme_version(readme_path)
     skill_states = [
@@ -112,6 +116,22 @@ def set_version(root: Path, version: str) -> list[Path]:
             encoding="utf-8",
         )
         changed.append(manifest_path)
+
+    if knowledge_stats.get("package_version") != normalized:
+        knowledge_stats["package_version"] = normalized
+        knowledge_stats_path.write_text(
+            json.dumps(knowledge_stats, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        changed.append(knowledge_stats_path)
+
+    if evals.get("package_version") != normalized:
+        evals["package_version"] = normalized
+        evals_path.write_text(
+            json.dumps(evals, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+        changed.append(evals_path)
 
     if readme_version != normalized:
         readme_text = README_BADGE_PATTERN.sub(
@@ -152,6 +172,28 @@ def consistency_issues(root: Path = ROOT) -> list[str]:
             )
     except (OSError, json.JSONDecodeError) as exc:
         issues.append(f"无法读取 {manifest_path.relative_to(root)}：{exc}")
+
+    knowledge_stats_path = root / "data" / "knowledge-build-stats.json"
+    try:
+        knowledge_stats = json.loads(knowledge_stats_path.read_text(encoding="utf-8"))
+        if knowledge_stats.get("package_version") != version:
+            issues.append(
+                f"{knowledge_stats_path.relative_to(root)}："
+                f"{knowledge_stats.get('package_version')!r}，应为 {version!r}"
+            )
+    except (OSError, json.JSONDecodeError) as exc:
+        issues.append(f"无法读取 {knowledge_stats_path.relative_to(root)}：{exc}")
+
+    evals_path = root / "evals" / "evals.json"
+    try:
+        evals = json.loads(evals_path.read_text(encoding="utf-8"))
+        if evals.get("package_version") != version:
+            issues.append(
+                f"{evals_path.relative_to(root)}："
+                f"{evals.get('package_version')!r}，应为 {version!r}"
+            )
+    except (OSError, json.JSONDecodeError) as exc:
+        issues.append(f"无法读取 {evals_path.relative_to(root)}：{exc}")
 
     readme_path = root / "README.md"
     try:

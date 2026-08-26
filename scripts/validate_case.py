@@ -9,12 +9,36 @@ import json
 from pathlib import Path
 from typing import Any
 
-from case_state import read_json, validate_state
-from workflow_graph import DEFAULT_GRAPH, task_context_errors, workflow_blockers
+from case_state import (
+    fact_conflict_errors,
+    read_json,
+    structured_authority_errors,
+    structured_calculation_errors,
+    structured_evidence_errors,
+    structured_issue_errors,
+    structured_procedure_errors,
+    validate_state,
+)
+from workflow_graph import (
+    DEFAULT_GRAPH,
+    FORMAL_DELIVERY_STATUSES,
+    artifact_lineage_errors,
+    artifact_traceability_result,
+    task_context_errors,
+    workflow_blockers,
+)
 
 
 def finding(code: str, severity: str, message: str, affected: list[str] | None = None) -> dict[str, Any]:
     return {"code": code, "severity": severity, "message": message, "affected_nodes": affected or []}
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def ids(items: Any, key: str) -> set[str]:
@@ -33,6 +57,7 @@ def approved(state: dict[str, Any], gate: str) -> bool:
 
 
 def validate_artifacts(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+    graph = read_json(DEFAULT_GRAPH)
     for index, artifact in enumerate(state.get("artifacts", [])):
         if not isinstance(artifact, dict):
             findings.append(finding("ARTIFACT_OBJECT", "blocker", f"artifacts[{index}] 不是 object。"))
@@ -42,9 +67,20 @@ def validate_artifacts(state: dict[str, Any], findings: list[dict[str, Any]]) ->
             findings.append(finding("ARTIFACT_MISSING", "high", f"产物文件不存在：{path}。", ["validation"]))
             continue
         expected = artifact.get("sha256")
-        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        actual = sha256_file(path)
         if expected != actual:
             findings.append(finding("ARTIFACT_HASH", "high", f"产物哈希与登记值不一致：{path}。", ["validation"]))
+        artifact_id = artifact.get("artifact_id")
+        if isinstance(artifact_id, str):
+            for message in artifact_lineage_errors(state, artifact_id):
+                findings.append(finding("ARTIFACT_LINEAGE", "blocker", message, ["drafting", "validation"]))
+            if (
+                state.get("current_node") == "stage_close"
+                and artifact.get("delivery_status") in FORMAL_DELIVERY_STATUSES
+            ):
+                trace = artifact_traceability_result(state, graph, artifact_id, require_approval=True)
+                for message in trace["errors"]:
+                    findings.append(finding("ARTIFACT_TRACE", "blocker", message, ["lawyer_approval", "stage_close"]))
 
 
 def validate_links(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
@@ -76,13 +112,32 @@ def validate_links(state: dict[str, Any], findings: list[dict[str, Any]]) -> Non
 
 
 def validate_rules(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
-    for index, rule in enumerate(state.get("rules", [])):
-        if not isinstance(rule, dict):
-            continue
-        if rule.get("verification_status") == "verified" and (not rule.get("document_id") or not rule.get("article_id")):
-            findings.append(finding("RULE_ANCHOR", "high", f"rules[{index}] 标记已验证但缺少 document_id 或 article_id。", ["authority_research"]))
-        if rule.get("validity_status") in {"已废止", "repealed"} and not rule.get("warning"):
-            findings.append(finding("RULE_REPEALED", "blocker", f"rules[{index}] 使用已废止规则但未显式警示。", ["authority_research"]))
+    for message in structured_authority_errors(state):
+        findings.append(finding("AUTHORITY_MATRIX", "blocker", message, ["authority_research"]))
+
+
+def validate_calculations(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+    for message in structured_calculation_errors(state):
+        findings.append(finding("CALCULATION_LEDGER", "blocker", message, ["claims_procedure"]))
+    for item in state.get("calculations", []):
+        if isinstance(item, dict) and item.get("status") == "needs_confirmation":
+            findings.append(finding(
+                "CALCULATION_PENDING", "high",
+                f"计算 {item.get('calculation_id')} 仍有待确认输入，不得作为确定金额使用。",
+                ["claims_procedure"],
+            ))
+
+
+def validate_procedure(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+    for message in structured_procedure_errors(state):
+        findings.append(finding("PROCEDURE_ANALYSIS", "blocker", message, ["claims_procedure"]))
+    for item in state.get("procedural_assessments", []):
+        if isinstance(item, dict) and item.get("analysis_status") == "needs_confirmation":
+            findings.append(finding(
+                "PROCEDURE_PENDING", "blocker",
+                f"程序分析 {item.get('assessment_id')} 仍有待确认项。",
+                ["claims_procedure"],
+            ))
 
 
 def validate_gates(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
@@ -98,18 +153,169 @@ def validate_material_traceability(state: dict[str, Any], findings: list[dict[st
     for index, material in enumerate(state.get("materials", [])):
         if not isinstance(material, dict):
             continue
-        if material.get("source_path") and not material.get("source_sha256"):
+        source = Path(str(material.get("source_path", ""))).expanduser()
+        expected = material.get("source_sha256")
+        if not source.is_file():
+            findings.append(finding(
+                "MATERIAL_SOURCE_MISSING", "blocker",
+                f"materials[{index}] 原始材料不存在：{source}。",
+                ["material_ingestion"],
+            ))
+        elif not expected:
             findings.append(finding(
                 "MATERIAL_HASH", "high",
                 f"materials[{index}] 已登记原始路径但缺少 source_sha256。",
                 ["material_ingestion"],
             ))
-        if material.get("ocr_status") in {"partial", "completed"} and not material.get("derivative_path"):
+        else:
+            actual = sha256_file(source)
+            if expected != actual:
+                findings.append(finding(
+                    "MATERIAL_HASH_MISMATCH", "blocker",
+                    f"materials[{index}] 原始材料当前哈希与接入登记不一致：{source}。",
+                    ["material_ingestion"],
+                ))
+            if material.get("source_size_bytes") != source.stat().st_size:
+                findings.append(finding(
+                    "MATERIAL_SIZE_MISMATCH", "high",
+                    f"materials[{index}] 原始材料大小与接入登记不一致：{source}。",
+                    ["material_ingestion"],
+                ))
+        required_metadata = {
+            "file_kind": {"text", "document", "pdf", "image", "binary"},
+            "text_layer_status": {"complete", "partial", "none", "unknown"},
+            "ocr_status": {"not_needed", "pending", "partial", "completed", "failed"},
+            "visual_review_status": {"not_started", "sampled", "critical_pages_reviewed", "completed"},
+            "original_or_copy": {"original", "copy", "unknown"},
+        }
+        for field, allowed in required_metadata.items():
+            if material.get(field) not in allowed:
+                findings.append(finding(
+                    "MATERIAL_METADATA", "high",
+                    f"materials[{index}].{field} 缺失或无效。",
+                    ["material_ingestion"],
+                ))
+        record_path = Path(str(material.get("ingestion_record_path", ""))).expanduser()
+        if not record_path.is_file():
+            findings.append(finding(
+                "MATERIAL_RECORD", "high",
+                f"materials[{index}] 缺少真实材料接入记录。",
+                ["material_ingestion"],
+            ))
+        else:
+            try:
+                record_payload = json.loads(record_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                record_payload = None
+            if not isinstance(record_payload, dict) or any(
+                record_payload.get(field) != material.get(field)
+                for field in (
+                    "material_id", "source_path", "source_sha256", "source_size_bytes", "page_index"
+                )
+            ):
+                findings.append(finding(
+                    "MATERIAL_RECORD_MISMATCH", "blocker",
+                    f"materials[{index}] 的逐材料接入记录与案件状态不一致。",
+                    ["material_ingestion"],
+                ))
+        page_start = material.get("page_start")
+        page_end = material.get("page_end")
+        if not isinstance(page_start, int) or page_start < 1 or (
+            page_end is not None and (not isinstance(page_end, int) or page_end < page_start)
+        ):
+            findings.append(finding(
+                "MATERIAL_PAGE_RANGE", "high",
+                f"materials[{index}] 缺少合法页码范围。",
+                ["material_ingestion"],
+            ))
+        page_count = material.get("page_count")
+        page_index = material.get("page_index")
+        expected_numbers = list(range(1, page_count + 1)) if isinstance(page_count, int) else []
+        actual_numbers = (
+            [page.get("page_number") for page in page_index if isinstance(page, dict)]
+            if isinstance(page_index, list)
+            else None
+        )
+        valid_page_items = isinstance(page_index, list) and all(
+            isinstance(page, dict)
+            and page.get("text_layer_status") in {"complete", "partial", "none", "unknown"}
+            and isinstance(page.get("extracted_char_count"), int)
+            and page["extracted_char_count"] >= 0
+            and page.get("ocr_status") in {"not_needed", "pending", "partial", "completed", "failed"}
+            for page in page_index
+        )
+        if not valid_page_items or actual_numbers != expected_numbers:
+            findings.append(finding(
+                "MATERIAL_PAGE_INDEX", "high",
+                f"materials[{index}] 缺少与页数一致的连续分页索引。",
+                ["material_ingestion"],
+            ))
+        derivative_value = material.get("derivative_path")
+        derivative = Path(str(derivative_value)).expanduser() if derivative_value else None
+        if derivative is not None and not derivative.is_file():
+            findings.append(finding(
+                "MATERIAL_DERIVATIVE_MISSING", "high",
+                f"materials[{index}] 登记的派生文本不存在：{derivative}。",
+                ["material_ingestion"],
+            ))
+        if material.get("ocr_status") in {"partial", "completed"} and derivative is None:
             findings.append(finding(
                 "OCR_DERIVATIVE", "high",
                 f"materials[{index}] 已记录 OCR 结果但缺少 derivative_path。",
                 ["material_ingestion"],
             ))
+
+
+def validate_fact_provenance(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+    material_ids = ids(state.get("materials"), "material_id")
+    for index, fact in enumerate(state.get("facts", [])):
+        if not isinstance(fact, dict):
+            continue
+        statement = fact.get("statement")
+        if not isinstance(statement, str) or len(statement.strip()) < 4:
+            findings.append(finding(
+                "FACT_STATEMENT", "high",
+                f"facts[{index}] 缺少可复核的事实陈述。",
+                ["intake"],
+            ))
+        sources = fact.get("sources")
+        if not isinstance(sources, list):
+            continue
+        missing = sorted({item for item in sources if isinstance(item, str)} - material_ids)
+        if missing:
+            findings.append(finding(
+                "FACT_SOURCE", "high",
+                f"facts[{index}] 引用不存在的材料 ID：{', '.join(missing)}。",
+                ["intake"],
+            ))
+        if fact.get("status") == "supported" and not sources:
+            findings.append(finding(
+                "FACT_SUPPORTED_SOURCE", "blocker",
+                f"facts[{index}] 标记为 supported 但没有材料来源。",
+                ["intake"],
+            ))
+    for message in fact_conflict_errors(state):
+        findings.append(finding("FACT_CONFLICT", "blocker", message, ["intake", "validation"]))
+
+
+def validate_issue_matrix(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+    for message in structured_issue_errors(state):
+        findings.append(finding(
+            "ISSUE_MATRIX",
+            "blocker",
+            message,
+            ["issue_analysis"],
+        ))
+
+
+def validate_evidence_chains(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
+    for message in structured_evidence_errors(state):
+        findings.append(finding(
+            "EVIDENCE_CHAIN",
+            "blocker",
+            message,
+            ["evidence_analysis"],
+        ))
 
 
 def validate_workflow_state(state: dict[str, Any], findings: list[dict[str, Any]]) -> None:
@@ -134,8 +340,13 @@ def main() -> int:
         validate_artifacts(state, findings)
         validate_links(state, findings)
         validate_rules(state, findings)
+        validate_calculations(state, findings)
+        validate_procedure(state, findings)
         validate_gates(state, findings)
         validate_material_traceability(state, findings)
+        validate_fact_provenance(state, findings)
+        validate_issue_matrix(state, findings)
+        validate_evidence_chains(state, findings)
         validate_workflow_state(state, findings)
     severities = {item["severity"] for item in findings}
     status = "blocked" if "blocker" in severities else "return" if "high" in severities else "pass"
@@ -145,6 +356,7 @@ def main() -> int:
         output = Path(args.output)
         if output.exists():
             raise SystemExit(f"拒绝覆盖已有文件：{output}")
+        output.parent.mkdir(parents=True, exist_ok=True)
         output.write_text(rendered, encoding="utf-8")
     print(rendered, end="")
     return 0 if status == "pass" else 1

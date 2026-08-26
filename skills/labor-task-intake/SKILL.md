@@ -3,7 +3,7 @@ name: labor-task-intake
 description: 劳动争议办案的前置任务确认。当用户启动新案件、给出案件文件但未明确要求，或代理立场、程序阶段尚未确认时使用。在读取或处理案件材料前必须先完成。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.2.0"
+version: "1.3.0"
 license: AGPL-3.0
 ---
 
@@ -14,8 +14,8 @@ license: AGPL-3.0
 3. 用户明确要求“仲裁申请书／仲裁答辩状”、“一审起诉状／答辩状”或“上诉状／二审答辩”时，可据此唯一确定对应阶段，并在 `task_context` 记录推断依据。文书种类仍可对应多个阶段时才询问。
 4. 一次最多问三个短问题；用户已明确或根据明确任务可唯一确定的项目不重复询问。
 5. 未获得用户回答时，保持 `representation=undetermined`、`stage=undetermined`和 `current_node=task_intake`；不调用材料处理或实体分析 Skill。
-6. 获得确认后，使用 `case_state.py set-task` 回写 `task_context`、`representation`、`stage`和 `jurisdiction`，就地更新 `.casework/case_state.json`，不生成根目录节点快照。
-7. 运行 `workflow_graph.py transition --event pass`；只有门禁通过后才进入 `material_ingestion`。
+6. 获得确认后，运行 `python3 scripts/case_state.py set-task --input <case-root>/.casework/case_state.json --representation <employee|employer> --stage <程序阶段> --user-request <本轮任务>`，按需追加 `--jurisdiction`、`--requested-output` 和 `--confirmed-by`，就地回写 `task_context`、`representation`、`stage` 和 `jurisdiction`，不生成根目录节点快照。
+7. 运行 `python3 scripts/workflow_graph.py transition --state <case-root>/.casework/case_state.json --event pass --actor <执行者>`；只有门禁通过后才进入 `material_ingestion`。
 
 建议提问：
 

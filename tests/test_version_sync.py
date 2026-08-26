@@ -20,10 +20,22 @@ SPEC.loader.exec_module(SYNC)
 
 def _write_fixture(root: Path) -> None:
     (root / ".codex-plugin").mkdir(parents=True)
+    (root / "data").mkdir(parents=True)
+    (root / "evals").mkdir(parents=True)
     (root / "skills" / "sample").mkdir(parents=True)
     (root / "VERSION").write_text("0.1.0\n", encoding="utf-8")
     (root / ".codex-plugin" / "plugin.json").write_text(
         json.dumps({"name": "Fixture", "version": "0.1.0"}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    (root / "data" / "knowledge-build-stats.json").write_text(
+        json.dumps({"manifest_version": "1.0.0", "package_version": "0.1.0"}, indent=2)
+        + "\n",
+        encoding="utf-8",
+    )
+    (root / "evals" / "evals.json").write_text(
+        json.dumps({"schema_version": "2.0", "package_version": "0.1.0"}, indent=2)
+        + "\n",
         encoding="utf-8",
     )
     (root / "README.md").write_text(
@@ -58,12 +70,20 @@ class VersionSyncTest(unittest.TestCase):
 
             changed = SYNC.set_version(root, "1.2.3")
 
-            self.assertEqual(len(changed), 5)
+            self.assertEqual(len(changed), 7)
             self.assertEqual((root / "VERSION").read_text(encoding="utf-8"), "1.2.3\n")
             manifest = json.loads(
                 (root / ".codex-plugin" / "plugin.json").read_text(encoding="utf-8")
             )
             self.assertEqual(manifest["version"], "1.2.3")
+            knowledge_stats = json.loads(
+                (root / "data" / "knowledge-build-stats.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(knowledge_stats["package_version"], "1.2.3")
+            evals = json.loads(
+                (root / "evals" / "evals.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(evals["package_version"], "1.2.3")
             self.assertIn(
                 "version-v1.2.3-brightgreen.svg",
                 (root / "README.md").read_text(encoding="utf-8"),
@@ -98,6 +118,21 @@ class VersionSyncTest(unittest.TestCase):
 
             self.assertEqual(len(issues), 1)
             self.assertIn("README.md", issues[0])
+            self.assertIn("9.9.9", issues[0])
+
+    def test_eval_dataset_version_drift_is_checked(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            _write_fixture(root)
+            evals_path = root / "evals" / "evals.json"
+            evals = json.loads(evals_path.read_text(encoding="utf-8"))
+            evals["package_version"] = "9.9.9"
+            evals_path.write_text(json.dumps(evals, indent=2) + "\n", encoding="utf-8")
+
+            issues = SYNC.consistency_issues(root)
+
+            self.assertEqual(len(issues), 1)
+            self.assertIn("evals/evals.json", issues[0])
             self.assertIn("9.9.9", issues[0])
 
     def test_invalid_version_is_rejected_before_writing(self):

@@ -2,6 +2,8 @@
 
 ## 安装
 
+运行测试前请用 `python3 --version` 确认环境为 Python 3.11 或更高版本（推荐 3.12）；macOS 系统自带的 Python 3.9 不受支持。
+
 核心知识组件和办案逻辑可离线使用。生成 `.docx` 文书需要本机安装 Pandoc:
 
 ```bash
@@ -37,10 +39,15 @@ pandoc --version || brew install pandoc   # macOS
 生成:
 
 ```bash
-python3 scripts/generate_docs.py --case my_case.json --output ./output
+python3 scripts/generate_docs.py \
+  --case my_case.json \
+  --output ./output \
+  --types 仲裁申请书,证据清单 \
+  --delivery-status lawyer_review_draft \
+  --strict
 ```
 
-默认输出全部三种文书:`仲裁申请书.docx`、`证据清单.docx`、`行动清单.docx`;可用 `--types "仲裁申请书,证据清单"` 指定子集。
+`--types` 必须明确列出本次需要的文书，系统不会顺带生成未请求文件。上述示例将两份 `.docx` 写入 `./output/01_律师复核初稿/`，内部 Markdown 和版式报告写入 `./output/.casework/drafting/`；已有同版本文件不会被覆盖。
 
 输入也支持 PDF 案卷材料、图片、自然语言案件描述。PDF、图片等材料的读取与扫描件 OCR 由运行环境提供；LaborPilot 在取得可读文本后完成要素提取和办案分析。
 
