@@ -30,6 +30,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: 安装 Pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes pandoc
+
       - name: 读取并校验版本
         id: version
         shell: bash

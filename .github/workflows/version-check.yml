@@ -23,6 +23,11 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      - name: 安装 Pandoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes pandoc
+
       - name: 校验版本同步
         run: python3 scripts/sync_version.py --check
 
