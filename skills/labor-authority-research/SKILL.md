@@ -3,7 +3,7 @@ name: labor-authority-research
 description: 劳动争议法律法规、规范性文件和浙江地方口径的检索与引用校验。当需要按争点、法规名、文号、条号、地域、时间效力检索，或核验 document_id、article_id、页码和效力状态时使用。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.4.2"
+version: "1.4.3"
 license: AGPL-3.0
 ---
 
