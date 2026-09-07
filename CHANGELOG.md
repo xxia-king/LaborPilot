@@ -1,10 +1,24 @@
 # 更新日志
 
-## 未发布修订 - 2026-09-07
+## [1.4.0] - 2026-09-07
 
-- 废止复核：七件浙江劳动文件现行引用闸门、历史参考、旧评测及知识检索提示联动修订。
-- 安全：docx_style／ingest_materials 的 XML 解析统一经 `scripts/xml_safe.py`（expat 探针拒绝 DTD 与实体定义，防十亿笑声／XXE 实体扩展），新增 6 项回归，全量 79 项测试通过。
-- 原始资料与两个“废止前”ZIP保留；修订待律师复核，本轮未提交或发布。
+### 新增
+
+- 增加浙江高院 2026-08-25 废止文件目录的效力身份闸门 `scripts/authority_status.py`：七件浙江劳动文件（2009 试行意见、解答一至五、2014 加班工资仲裁时效解答）不得作为现行依据引用；解答参考（六）（七）、纪要及国家司法解释不连带废止。
+- 案件状态校验增加废止处置约束：已废止地方文件效力必须标记 `repealed`，且仅可 `reference_only` 或 `excluded`，不得 `adopted`。
+- 法源研究增加 `historical_reference` 历史引用通道：仅核对历史文献身份与锚点并附警示，不证明当前效力。
+- 增加 `scripts/xml_safe.py` 安全 XML 解析（expat 探针拒绝 DTD 与实体定义，防十亿笑声／XXE 实体扩展），docx_style／ingest_materials 的 XML 解析统一接入。
+- 增加废止专项测试 `tests/test_repeal_query.py`、法源执行器废止反例与 XML 安全回归 6 项；全量测试 79 项。
+
+### 调整
+
+- 内嵌知识数据联动废止复核：96 张争点卡中 38 张修订（含旧卡与解答原文相悖处的纠正），状态降为 `pending_lawyer_review` 待律师复核；编译载荷与知识构建统计同步重建。
+- 领域评测期望值改写：场景判定不再依赖已废止旧解答，评测元数据记录效力复核状态。
+- README 与快速上手取消"地方资料均现行有效"表述；法源研究与文书起草 Skill 增加引用纪律注记。
+
+### 修复
+
+- 修复 docx_style／ingest_materials 以标准库 `ElementTree.fromstring` 解析外部材料 XML 的实体扩展高危模式（Mimosa 安全门禁拦截后修复）。
 
 
 本文件记录 LaborPilot 各公开版本的主要变化。项目采用 [语义化版本](https://semver.org/lang/zh-CN/)，整包 Plugin 与全部内置 Skill 使用同一版本号。

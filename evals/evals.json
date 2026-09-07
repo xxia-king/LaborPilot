@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0",
   "dataset_version": "2026-09-07.1",
-  "package_version": "1.3.0",
+  "package_version": "1.4.0",
   "evaluated_capabilities": [
     "single_issue_recall",
     "composite_issue_recall",
