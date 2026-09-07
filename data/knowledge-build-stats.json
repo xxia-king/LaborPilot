@@ -1,6 +1,6 @@
 {
   "manifest_version": "1.0.0",
-  "package_version": "1.4.1",
+  "package_version": "1.4.2",
   "generated_on": "2026-09-07",
   "statistics_scope": {
     "source_documents": "法规汇编拆分后的独立文档编号及哈希承诺，不含原文和标题。",

@@ -3,7 +3,7 @@ name: labor-issue-analysis
 description: 劳动争议争点、请求权或抗辩权基础分析。根据案件事实自动识别法律争点,建立请求/抗辩矩阵,列出构成要件和对方最强反向观点。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.4.1"
+version: "1.4.2"
 license: AGPL-3.0
 ---
 
