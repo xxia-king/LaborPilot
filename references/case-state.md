@@ -1,5 +1,7 @@
 # 案件图状态数据契约
 
+> 废止复核（2026-09-07）：浙江本次七件地方文件的 `validity_status` 必须为 `repealed`，采用状态仅 `reference_only`／`excluded`。历史事实日期或空 `effective_to` 均不能使其成为现行依据；不能据目录日补造终止日期。
+
 ## 用途
 
 `.casework/case_state.json` 是同一案件跨任务、跨阶段的唯一结构化状态入口。它不替代原始案卷，只记录来源、分析状态、工作图运行和经用户确认的决定。完整结构见 [case-state.schema.json](case-state.schema.json)，目录规范见 [output-layout.md](output-layout.md)。

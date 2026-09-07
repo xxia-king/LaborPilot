@@ -228,6 +228,13 @@ class AuthorityExecutorTest(unittest.TestCase):
             ("废止法源无警示", lambda item: item.update(
                 validity_status="repealed", effective_to="2025-12-31", warning=None
             ), "必须写明 warning"),
+            ("旧索引冒充现行解答五", lambda item: item.update(
+                document_id="ZJLAC-LABOR-132", validity_status="effective"
+            ), "已列入浙江2026-08-25废止目录"),
+            ("废止解答借旧日期正式采用", lambda item: item.update(
+                document_title="浙江高院解答（三）", validity_status="repealed",
+                warning="本文件已废止，但试图以早期事实日期继续正式采用。"
+            ), "仅可 reference_only 或 excluded"),
             ("未覆盖全部要件", lambda item: item.update(element_ids=["element-ground"]), "尚未关联已核验且适用的法源"),
         ]
         for label, mutate, expected_message in cases:

@@ -18,6 +18,9 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 GENERATOR = SCRIPTS / "generate_docs.py"
 STYLE = SCRIPTS / "docx_style.py"
+
+sys.path.insert(0, str(SCRIPTS))
+from xml_safe import fromstring as safe_fromstring
 sys.path.insert(0, str(SCRIPTS))
 import workflow_graph as WORKFLOW  # noqa: E402
 
@@ -199,7 +202,7 @@ class DocxStyleTest(unittest.TestCase):
             self.generate(root, case_path, "证据清单")
             docx = root / "01_律师复核初稿" / "03_证据目录_律师复核初稿_v1.docx"
             with ZipFile(docx) as archive:
-                document = ET.fromstring(archive.read("word/document.xml"))
+                document = safe_fromstring(archive.read("word/document.xml"))
 
             namespace = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
             full_text = "".join(node.text or "" for node in document.iter(namespace + "t"))

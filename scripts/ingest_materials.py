@@ -26,6 +26,7 @@ from typing import Any
 from xml.etree import ElementTree
 
 from case_state import read_json, validate_state, write_state
+from xml_safe import UnsafeXMLError, fromstring as safe_fromstring
 
 
 TEXT_SUFFIXES = {
@@ -86,8 +87,8 @@ def extract_docx_text(path: Path) -> str:
     try:
         with zipfile.ZipFile(path) as archive:
             document = archive.read("word/document.xml")
-        root = ElementTree.fromstring(document)
-    except (KeyError, OSError, zipfile.BadZipFile, ElementTree.ParseError) as exc:
+        root = safe_fromstring(document)
+    except (KeyError, OSError, zipfile.BadZipFile, ElementTree.ParseError, UnsafeXMLError) as exc:
         fail(f"DOCX 无法读取：{path}：{exc}")
     lines: list[str] = []
     for paragraph in root.iter():

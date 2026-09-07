@@ -1,5 +1,11 @@
 # AI 工作台账
 
+## 2026-09-07：废止复核
+
+- 2026-09-07｜Codex（GPT-6）｜废止引用修订、文档收尾及按用户授权暂存｜session：`01a0780c-cbac-73e0-b8a3-0f4445f9ffd2`｜AI 生成，待人工复核｜[运行记录](.agent/runs/2026-09-07-repeal-review.md)。
+- 2026-09-07｜ZCode（GLM-5.3）｜废止修订全仓审核通过；Mimosa提交门禁拦截XML实体扩展高危后，修复docx_style／ingest_materials（新增`scripts/xml_safe.py`与6项回归，全量79项测试通过）｜session：`sess_830b32ce-7d2c-4414-8856-113344d32809`｜AI 生成，已复核｜见本仓本次提交。
+
+
 ## 2026-08-27｜neat-freak 发布收尾（待人工复核）
 
 - 2026-08-27｜Codex｜完成 LaborPilot 1.3.0 文档、版本、独立公开包和发布门禁审查；提交并推送后，GitHub 双 Python CI 与自动发布工作流通过，`v1.3.0` Release 已发布｜session：`2026-08-27-laborpilot-1.3.0-neat-freak`｜AI 生成，待人工复核｜详见 `.agent/runs/2026-08-27-laborpilot-1.3.0-neat-freak.md`。

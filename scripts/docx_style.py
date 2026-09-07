@@ -15,6 +15,8 @@ from typing import Any
 from xml.etree import ElementTree as ET
 from zipfile import BadZipFile, ZIP_DEFLATED, ZipFile
 
+from xml_safe import UnsafeXMLError, fromstring as safe_fromstring
+
 
 W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 CP_NS = "http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
@@ -339,7 +341,7 @@ def add_profile_metadata(files: dict[str, bytes], delivery_status: str) -> None:
     core_name = "docProps/core.xml"
     if core_name not in files:
         return
-    core = ET.fromstring(files[core_name])
+    core = safe_fromstring(files[core_name])
     keywords = core.find(f"{{{CP_NS}}}keywords")
     if keywords is None:
         keywords = ET.SubElement(core, f"{{{CP_NS}}}keywords")
@@ -359,9 +361,9 @@ def apply_jls_style(path: Path, document_type: str, delivery_status: str) -> Non
         files = {name: archive.read(name) for name in archive.namelist()}
     if any(name not in files for name in ("word/document.xml", "word/styles.xml", "word/fontTable.xml")):
         raise ValueError("DOCX 缺少 document.xml、styles.xml 或 fontTable.xml。")
-    document = ET.fromstring(files["word/document.xml"])
-    styles = ET.fromstring(files["word/styles.xml"])
-    font_table = ET.fromstring(files["word/fontTable.xml"])
+    document = safe_fromstring(files["word/document.xml"])
+    styles = safe_fromstring(files["word/styles.xml"])
+    font_table = safe_fromstring(files["word/fontTable.xml"])
 
     remove_blank_body_paragraphs(document)
     paragraphs = direct_body_paragraphs(document)
@@ -513,10 +515,10 @@ def validate_jls_docx(
         return [f"不支持的交付层级：{delivery_status}"]
     try:
         with ZipFile(path) as archive:
-            document = ET.fromstring(archive.read("word/document.xml"))
-            font_table = ET.fromstring(archive.read("word/fontTable.xml"))
-            core = ET.fromstring(archive.read("docProps/core.xml")) if "docProps/core.xml" in archive.namelist() else None
-    except (OSError, KeyError, BadZipFile, ET.ParseError) as exc:
+            document = safe_fromstring(archive.read("word/document.xml"))
+            font_table = safe_fromstring(archive.read("word/fontTable.xml"))
+            core = safe_fromstring(archive.read("docProps/core.xml")) if "docProps/core.xml" in archive.namelist() else None
+    except (OSError, KeyError, BadZipFile, ET.ParseError, UnsafeXMLError) as exc:
         return [f"DOCX 无法解析：{exc}"]
     detected = detect_document_type(document)
     if document_type is None:

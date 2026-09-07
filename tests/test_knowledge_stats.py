@@ -40,7 +40,8 @@ class KnowledgeStatsTest(unittest.TestCase):
             "total_cards": 96,
             "issue_card_count": 82,
             "gate_card_count": 14,
-            "zhejiang_guidance_card_count": 80,
+            # 废止复核：新增被迫解除历史参考节；有内容不代表现行有效。
+            "zhejiang_guidance_card_count": 81,
             "statutory_leaf_route_count": 22,
             "operational_fallback_route_count": 1,
             "total_route_category_count": 23,

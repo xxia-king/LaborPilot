@@ -18,6 +18,7 @@ from copy import deepcopy
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from pathlib import Path
+from authority_status import known_repeal
 from typing import Any
 from urllib.parse import urlparse
 
@@ -705,6 +706,12 @@ def structured_authority_errors(state: dict[str, Any]) -> list[str]:
         ):
             errors.append(f"{label} 地域范围与案件管辖地不匹配。")
 
+        # 废止复核：已确认废止的地方文件不能借旧状态或空终止日期冒充现行法源。
+        if known_repeal(record):
+            if record.get("validity_status") != "repealed":
+                errors.append(f"{label} 已列入浙江2026-08-25废止目录，效力须标记 repealed。")
+            if adoption == "adopted":
+                errors.append(f"{label} 已废止地方文件仅可 reference_only 或 excluded；历史观点须另核有效依据。")
         if record.get("validity_status") in {"amended", "repealed", "expired"} and (
             not isinstance(record.get("warning"), str) or len(record["warning"].strip()) < 8
         ):

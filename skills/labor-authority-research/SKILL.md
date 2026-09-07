@@ -9,6 +9,9 @@ license: AGPL-3.0
 
 # 劳动争议法源研究
 
+> 废止复核（2026-09-07）：已列入浙江2026-08-25目录的七件劳动文件（2009年试行意见、解答一至五、2014年加班工资仲裁时效解答）不得作现行依据。历史观点允许研究，须另核可适用法源；目录发布日期不直接作为效力终止日。解答六、七及独立仲裁文件不连带废止。
+
+
 1. 读取已复核争点、案件管辖地和 `analysis_date`，按每个构成要件生成待核验任务：
 
    ```bash
@@ -28,7 +31,7 @@ license: AGPL-3.0
      --input <经复核的法源核验结果.json>
    ```
 
-6. 正式采用的法源必须同时为 `verification_status=verified` 和 `applicability_status=applicable`，且不得为未生效或效力未明规则。已修改、废止或失效规则如因历史事实仍需适用，必须同时满足相关日期位于效力期间，并写明 `warning` 与适用理由。
+6. 正式采用的法源必须同时为 `verification_status=verified` 和 `applicability_status=applicable`，且不得为未生效或效力未明规则。一般已修改、废止或失效规则如因历史事实仍需适用，须核明时间适用并写明 `warning` 与理由；本次浙江目录七件地方文件仅作 `reference_only` 或 `excluded`，不得借历史日期正式采用。
 7. 执行器会计算完整条文的 SHA-256，反向回写构成要件和对方路径的 `rule_ids`，并要求每个构成要件都关联已验证且适用的法源。该完成条件不得豁免。旧 `rules[]` 仅为占位结构时，使用 `--replace-existing-rules` 显式升级，替换前状态保留在 `.casework/history/`。
 
 已验证法源、适用条件与浙江口径写入 `01_案件研判报告_vN.md`；索引、检索 JSON 和引用校验结果存入 `.casework/authority/`，不单独向用户交付“法源检索记录”。
