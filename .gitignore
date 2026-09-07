@@ -27,3 +27,6 @@ build_cards.py
 /output/
 /01_律师复核初稿/
 /02_最终提交版/
+AILOG.md
+TASKS.md
+.agent/

@@ -1,10 +1,10 @@
 # LaborPilot
 
-> 废止复核（2026-09-07）：浙江2009年试行意见、解答一至五及2014年加班工资仲裁时效解答仅供历史研究，不作现行法源；解答六、七等未列入者不连带废止。观点须逐条另核有效依据，本地修订待律师复核。
+> 废止复核（2026-09-07）：浙江2009年试行意见、解答一至五及2014年加班工资仲裁时效解答仅供历史研究，不作现行法源；解答六、七等未列入者不连带废止。观点须逐条另核有效依据。
 
 > 劳动争议智能办案引擎(全国规则 + 浙江口径)——149 部法规文献提炼为 96 张争点知识卡,内嵌分发
 
-[![Version](https://img.shields.io/badge/version-v1.4.0-brightgreen.svg)](./CHANGELOG.md) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Version](https://img.shields.io/badge/version-v1.4.1-brightgreen.svg)](./CHANGELOG.md) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 **⚠️ 免责声明:本引擎产出的所有分析结果和法律文书均由 AI 辅助生成,仅供参考,不构成法律意见,必须经专业律师审核后方可使用。**
 

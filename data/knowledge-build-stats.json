@@ -1,6 +1,6 @@
 {
   "manifest_version": "1.0.0",
-  "package_version": "1.4.0",
+  "package_version": "1.4.1",
   "generated_on": "2026-09-07",
   "statistics_scope": {
     "source_documents": "法规汇编拆分后的独立文档编号及哈希承诺，不含原文和标题。",
@@ -1074,5 +1074,5 @@
       }
     ]
   },
-  "validity_review": "废止复核：保留149份历史与现行来源，非149份现行有效法源；本地修订待律师复核。"
+  "validity_review": "废止复核：保留149份历史与现行来源，非149份现行有效法源。"
 }
