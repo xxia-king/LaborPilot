@@ -13,6 +13,7 @@
 ### 修复
 
 - 文书生成在未安装 Pandoc 时给出安装提示并退出，不再抛出 `FileNotFoundError` 堆栈；全量测试增至 81 项。
+- CI 安装 Pandoc 时跳过 GitHub runner 预装的 Chrome 源，避免偶发 Hash Sum mismatch 把版本检查和发布任务拖死。
 
 ## [1.4.3] - 2026-09-07
 
