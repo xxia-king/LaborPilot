@@ -10,6 +10,7 @@ Pandoc 完成内容转换后，由标准库 OOXML 修正器确定性应用并校
 import argparse
 import json
 import re
+import shutil
 import subprocess
 import sys
 from datetime import date
@@ -81,13 +82,23 @@ def output_stem(doc_type, delivery_status, version):
     return f"{DOC_PREFIXES[doc_type]}_{DOC_DISPLAY_NAMES[doc_type]}_{label}_v{version}"
 
 
+PANDOC_MISSING = (
+    "未找到 Pandoc，无法生成 .docx。请先安装：https://pandoc.org\n"
+    "macOS: brew install pandoc\n"
+    "Debian/Ubuntu: apt install pandoc"
+)
+
+
 def md_to_docx(md_file: Path, docx_file: Path, ref_doc: Path = None):
     """pandoc md→docx,可指定参考样式文档。"""
     cmd = ["pandoc", str(md_file), "-o", str(docx_file),
            "--from=markdown", "--to=docx", "-V", "lang=zh-CN"]
     if ref_doc and ref_doc.exists():
         cmd.extend(["--reference-doc", str(ref_doc)])
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True)
+    except FileNotFoundError:
+        return False, PANDOC_MISSING
     return r.returncode == 0, r.stderr
 
 
@@ -249,6 +260,9 @@ def main():
     existing = [path for path in planned if path.exists()]
     if existing:
         ap.error("为避免覆盖既有版本，以下目标已存在：\n" + "\n".join(str(path) for path in existing))
+    if shutil.which("pandoc") is None:
+        print(PANDOC_MISSING, file=sys.stderr)
+        raise SystemExit(1)
     failures = []
 
     for doc_type in types:

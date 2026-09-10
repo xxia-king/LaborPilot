@@ -1,5 +1,20 @@
 # 更新日志
 
+## [1.4.4] - 2026-09-09
+
+### 新增
+
+- 增加 Cloud Agent 环境配置 `.cursor/environment.json`：启动时安装 Pandoc，以便文书生成与全量回归。
+
+### 调整
+
+- 移除已过期、且从未随公开仓库发布的公众号文章 PRD 审计文件。
+
+### 修复
+
+- 文书生成在未安装 Pandoc 时给出安装提示并退出，不再抛出 `FileNotFoundError` 堆栈；全量测试增至 81 项。
+- CI 安装 Pandoc 时跳过 GitHub runner 预装的 Chrome 源，避免偶发 Hash Sum mismatch 把版本检查和发布任务拖死。
+
 ## [1.4.3] - 2026-09-07
 
 ### 调整

@@ -32,8 +32,11 @@ jobs:
 
       - name: 安装 Pandoc
         run: |
+          # Runner 预装的 Google Chrome 源偶发 Hash Sum mismatch，与 Pandoc 无关。
+          sudo rm -f /etc/apt/sources.list.d/google-chrome*.list \
+                     /etc/apt/sources.list.d/google-chrome-stable*.list
           sudo apt-get update
-          sudo apt-get install --yes pandoc
+          sudo apt-get install --yes --no-install-recommends pandoc
 
       - name: 读取并校验版本
         id: version
