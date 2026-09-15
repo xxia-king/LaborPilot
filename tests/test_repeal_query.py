@@ -14,6 +14,13 @@ spec.loader.exec_module(router)
 
 
 class RepealQueryTest(unittest.TestCase):
+    def test_third_party_settlement_does_not_shift_waived_amount(self):
+        cards=marshal.loads(zlib.decompress(base64.b64decode(router._COMPILED_KNOWLEDGE)))
+        card=next(c for c in cards if c['id']=='H10')
+        self.assertIn('应赔付', card['zj'])
+        self.assertIn('自行承担', card['zj'])
+        self.assertNotIn('第三人已赔付对应项目总额', card['bd'])
+
     def test_all_revised_cards_keep_notice_in_returned_excerpt(self):
         cards=marshal.loads(zlib.decompress(base64.b64decode(router._COMPILED_KNOWLEDGE)))
         revised=[c for c in cards if '废止复核（2026-09-07）' in c['bd']]

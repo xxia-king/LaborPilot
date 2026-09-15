@@ -15,9 +15,9 @@
     "statutory_leaf_route_count": 22,
     "operational_fallback_route_count": 1,
     "total_route_category_count": 23,
-    "compiled_blob_sha256": "4af9c4ef36cec9b43942d710f52c57480979e9eecc925925f39883eb463afd6d",
-    "marshalled_payload_sha256": "804873aeb0857105f7a0658c7b61d2c4eb996feadfcfe56f72001562b652ebd3",
-    "canonical_cards_sha256": "bf67619870d151b4797e8e39323909f09b3433d8c293bd18866944763cd29aef",
+    "compiled_blob_sha256": "dc1d69000b97d42178fa3c970d63e83480b7b272c5cc180042ca87d1d8109765",
+    "marshalled_payload_sha256": "59dc84b2045c3655685127721efe63272d1528d203c80f547abcd4fed32c695c",
+    "canonical_cards_sha256": "08da11419b90dfa573eb87af596618cb0d9bf7fd4d6cba24cb609c0c08b67d02",
     "card_id_set_sha256": "c974fbf394b265a51605e760a8a5756c14c3a3a93f43af43dc4fef85fb45ae8b",
     "issue_gate_label_set_sha256": "0600c9ce9469210c2f90f4c93f42ef505364ef6b1662bb901ed018c98ea57be7"
   },
