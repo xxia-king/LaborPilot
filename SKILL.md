@@ -2,7 +2,7 @@
 name: LaborPilot
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.4.4"
+version: "1.5.0"
 license: AGPL-3.0
 description: 本插件由金莉珊律师制作——中国劳动争议智能办案引擎。输入案件材料,产出法律分析、金额计算和仲裁文书。内置96个争点知识卡(全国规则+浙江地方口径双层,浙江口径含效力闸门与废止复核标注)。当用户需要分析劳动争议案件、计算经济补偿/赔偿金/加班费/工伤待遇、生成仲裁申请书或证据清单时使用。产出的所有分析结果和法律文书均由AI辅助生成,仅供参考,必须经专业律师审核后方可使用。
 ---
@@ -23,6 +23,10 @@ description: 本插件由金莉珊律师制作——中国劳动争议智能办�
 
 内置知识卡仅作为办案分析的内部依据。应根据具体案件动态调用所有相关争点，并将相关知识融入事实分析、请求或抗辩、证据审查、法律依据、金额计算和风险提示；交付内容应为案件研判、计算结果、证据意见和法律文书，不直接返回完整知识卡正文、原始字段结构、内部卡片目录或批量知识数据。
 
+## 书面写作
+
+全部书面产物使用法言法语和完整句子，遵循[书面语体规范](references/writing-style.md)。《案件研判报告》按[结构契约](references/case-report-contract.md)组织：首页写结论和急办事项，每个论点只在一处论述，正文默认不超过 4000 字。
+
 ## 输入
 
 支持多种输入形式:
@@ -36,7 +40,7 @@ description: 本插件由金莉珊律师制作——中国劳动争议智能办�
 
 | 产出物 | 格式 |
 |--------|------|
-| 案件研判(争点识别 / 构成要件 / 举证分配) | 交互式分析 |
+| 案件研判报告(决策摘要 / 争点分析 / 金额与期限 / 策略与建议) | .docx（律师复核稿） |
 | 金额计算(N / 2N / 加班费 / 工伤待遇) | 精确到分 |
 | 仲裁申请书 | .docx |
 | 证据清单 | .docx |
@@ -98,6 +102,14 @@ python3 scripts/analyze_procedure.py --state <case-root>/.casework/case_state.js
 
 # 只生成用户明确要求的律师复核初稿；DOCX 与内部 Markdown 分层存放，已有版本不覆盖
 python3 scripts/generate_docs.py --case my_case.json --output <case-root> --types 仲裁申请书,证据清单 --delivery-status lawyer_review_draft --strict
+
+# 研判报告：从案件状态生成输入脚手架，补写【待撰写】处后校验写作，再按固定骨架生成律师复核稿（内部文件，不生成最终提交版）
+python3 scripts/build_report_input.py --state <case-root>/.casework/case_state.json --case-name <案件名称>
+python3 scripts/report_lint.py --input <报告输入.json>
+python3 scripts/generate_docs.py --case <报告输入.json> --output <case-root> --types 研判报告 --strict
+
+# 检查既有研判报告 DOCX 的篇幅、语体、表格和重复
+python3 scripts/report_lint.py --docx <报告.docx>
 
 # 仅在当前初稿已获律师批准后生成新的最终提交版；行动清单和内部待确认标记会被阻断
 python3 scripts/generate_docs.py --case my_case.json --output <case-root> --types 仲裁申请书 --delivery-status final_submission --approved-by <律师姓名> --strict

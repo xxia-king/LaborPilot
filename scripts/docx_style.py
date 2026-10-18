@@ -42,7 +42,14 @@ for prefix, uri in NAMESPACES.items():
 
 PROFILE_ID = "jls-legal-docx-2026-08-06"
 DELIVERY_STATUSES = {"lawyer_review_draft", "final_submission"}
-DOCUMENT_TYPES = {"仲裁申请书", "证据清单", "行动清单"}
+DOCUMENT_TYPES = {"仲裁申请书", "证据清单", "行动清单", "研判报告"}
+INTERNAL_DOCUMENT_TYPES = {"行动清单", "研判报告"}
+DOCUMENT_TITLES = {
+    "仲裁申请书": "劳动仲裁申请书",
+    "证据清单": "证据目录",
+    "行动清单": "待补材料与行动清单",
+    "研判报告": "案件研判报告",
+}
 FONT_EAST_ASIA = "仿宋_GB2312"
 FONT_RENDER_FALLBACK = "STFangsong"
 FONT_LATIN = "Times New Roman"
@@ -59,6 +66,59 @@ PAGE_HEIGHT = "16839"
 PAGE_MARGIN = "1440"
 TABLE_WIDTH = 9000
 FINAL_BLOCKED_MARKERS = ("【", "】", "待确认", "待核实", "待补充", "内部工作备注")
+R_NS = NAMESPACES["r"]
+FOOTER_PART = "word/footer_laborpilot.xml"
+FOOTER_REL_ID = "rIdLaborPilotFooter"
+FOOTER_REL_TYPE = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer"
+FOOTER_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"
+OUTLINE_LEVELS = {"heading": "0", "subheading": "1"}
+# 研判报告的标准表格按表头确定列宽，合计等于 TABLE_WIDTH。
+REPORT_TABLE_WIDTHS = {
+    ("可能结果", "可能性", "金额影响"): [3400, 2200, 3400],
+    ("争点", "我方主要理由", "主要障碍", "评估"): [2300, 2300, 2300, 2100],
+    ("项目", "金额（元）", "说明"): [2800, 1800, 4400],
+}
+# ECMA-376 规定的子元素顺序。LibreOffice 容忍顺序错误，Word 可能据此判定文件含有无法读取的内容。
+PPR_ORDER = (
+    "pStyle", "keepNext", "keepLines", "pageBreakBefore", "framePr", "widowControl", "numPr",
+    "suppressLineNumbers", "pBdr", "shd", "tabs", "suppressAutoHyphens", "kinsoku", "wordWrap",
+    "overflowPunct", "topLinePunct", "autoSpaceDE", "autoSpaceDN", "bidi", "adjustRightInd",
+    "snapToGrid", "spacing", "ind", "contextualSpacing", "mirrorIndents", "suppressOverlap", "jc",
+    "textDirection", "textAlignment", "textboxTightWrap", "outlineLvl", "divId", "cnfStyle",
+    "rPr", "sectPr", "pPrChange",
+)
+RPR_ORDER = (
+    "ins", "del", "moveFrom", "moveTo", "rStyle", "rFonts", "b", "bCs", "i", "iCs", "caps", "smallCaps",
+    "strike", "dstrike", "outline", "shadow", "emboss", "imprint", "noProof", "snapToGrid", "vanish",
+    "webHidden", "color", "spacing", "w", "kern", "position", "sz", "szCs", "highlight", "u", "effect",
+    "bdr", "shd", "fitText", "vertAlign", "rtl", "cs", "em", "lang", "eastAsianLayout", "specVanish",
+    "oMath", "rPrChange",
+)
+TBLPR_ORDER = (
+    "tblStyle", "tblpPr", "tblOverlap", "bidiVisual", "tblStyleRowBandSize", "tblStyleColBandSize",
+    "tblW", "jc", "tblCellSpacing", "tblInd", "tblBorders", "shd", "tblLayout", "tblCellMar", "tblLook",
+    "tblCaption", "tblDescription", "tblPrChange",
+)
+TCPR_ORDER = (
+    "cnfStyle", "tcW", "gridSpan", "hMerge", "vMerge", "tcBorders", "shd", "noWrap", "tcMar",
+    "textDirection", "tcFitText", "vAlign", "hideMark", "headers", "cellIns", "cellDel", "cellMerge",
+    "tcPrChange",
+)
+SECTPR_ORDER = (
+    "headerReference", "footerReference", "footnotePr", "endnotePr", "type", "pgSz", "pgMar", "paperSrc",
+    "pgBorders", "lnNumType", "pgNumType", "cols", "formProt", "vAlign", "noEndnote", "titlePg",
+    "textDirection", "bidi", "rtlGutter", "docGrid", "printerSettings", "sectPrChange",
+)
+BORDER_ORDER = ("top", "start", "left", "bottom", "end", "right", "insideH", "insideV", "tl2br", "tr2bl")
+MARGIN_ORDER = ("top", "start", "left", "bottom", "end", "right")
+CHILD_ORDERS = {
+    "pPr": PPR_ORDER, "rPr": RPR_ORDER, "tblPr": TBLPR_ORDER, "tcPr": TCPR_ORDER, "sectPr": SECTPR_ORDER,
+    "tblBorders": BORDER_ORDER, "tcBorders": BORDER_ORDER, "tblCellMar": MARGIN_ORDER,
+}
+# 页眉、页脚引用之间可以任意排列，只须位于节属性最前。
+EQUAL_RANK = {"footerReference": "headerReference"}
+HEADING_PATTERN = re.compile(r"^[一二三四五六七八九十]+、")
+SUBHEADING_PATTERN = re.compile(r"^（[一二三四五六七八九十]+）")
 
 
 def w(local: str) -> str:
@@ -119,9 +179,63 @@ def set_run_style(run: ET.Element, size: str, *, bold: bool | None = None) -> No
     set_run_properties(ensure(run, "rPr", first=True), size, bold=bold)
 
 
-def set_paragraph_style(paragraph: ET.Element, role: str) -> None:
+def child_rank(order: tuple[str, ...]) -> dict[str, int]:
+    rank = {w(local): index for index, local in enumerate(order)}
+    for local, same_as in EQUAL_RANK.items():
+        if local in order and same_as in order:
+            rank[w(local)] = rank[w(same_as)]
+    return rank
+
+
+def normalize_child_order(root: ET.Element) -> None:
+    """按 ECMA-376 顺序重排各类属性的子元素；未知扩展元素保持相对顺序并置于末尾。"""
+    for element in root.iter():
+        if not isinstance(element.tag, str) or not element.tag.startswith(f"{{{W_NS}}}"):
+            continue
+        order = CHILD_ORDERS.get(element.tag.split("}", 1)[1])
+        if order is None:
+            continue
+        rank = child_rank(order)
+        children = list(element)
+        ordered = sorted(children, key=lambda child: rank.get(child.tag, len(order)))
+        if ordered != children:
+            for child in children:
+                element.remove(child)
+            element.extend(ordered)
+
+
+def child_order_findings(root: ET.Element, part: str) -> list[str]:
+    """返回子元素顺序不符合 ECMA-376 的元素类型及处数。"""
+    counts: dict[str, int] = {}
+    for element in root.iter():
+        if not isinstance(element.tag, str) or not element.tag.startswith(f"{{{W_NS}}}"):
+            continue
+        name = element.tag.split("}", 1)[1]
+        order = CHILD_ORDERS.get(name)
+        if order is None:
+            continue
+        rank = child_rank(order)
+        known = [rank[child.tag] for child in element if child.tag in rank]
+        if known != sorted(known):
+            counts[name] = counts.get(name, 0) + 1
+    return [f"{part} 中 <{name}> 的子元素顺序不符合 OOXML 规范（{count} 处）。" for name, count in sorted(counts.items())]
+
+
+def set_outline_level(ppr: ET.Element, level: str) -> None:
+    """按 OOXML 顺序把大纲级别放在 rPr、sectPr 和修订记录之前。"""
+    element = ET.Element(w("outlineLvl"))
+    set_w(element, "val", level)
+    tail = {w("rPr"), w("sectPr"), w("pPrChange")}
+    for index, child in enumerate(list(ppr)):
+        if child.tag in tail:
+            ppr.insert(index, element)
+            return
+    ppr.append(element)
+
+
+def set_paragraph_style(paragraph: ET.Element, role: str, *, outline: bool = False) -> None:
     ppr = ensure(paragraph, "pPr", first=True)
-    remove_children(ppr, "spacing", "ind", "jc", "keepNext", "contextualSpacing")
+    remove_children(ppr, "spacing", "ind", "jc", "keepNext", "contextualSpacing", "outlineLvl")
     spacing = ensure(ppr, "spacing")
     for key, value in (("before", "0"), ("after", "0"), ("line", LINE_TWIPS), ("lineRule", "exact")):
         set_w(spacing, key, value)
@@ -135,6 +249,9 @@ def set_paragraph_style(paragraph: ET.Element, role: str) -> None:
         ensure(ppr, "keepNext")
     elif role == "heading":
         size, bold, alignment, indent = HEADING_SIZE, True, "center", None
+        ensure(ppr, "keepNext")
+    elif role == "subheading":
+        bold = True
         ensure(ppr, "keepNext")
     elif role in {"caption", "no_indent"}:
         alignment, indent = ("center" if role == "caption" else "left"), None
@@ -157,6 +274,8 @@ def set_paragraph_style(paragraph: ET.Element, role: str) -> None:
     if indent is not None:
         key, value = indent
         set_w(ensure(ppr, "ind"), key, value)
+    if outline and role in OUTLINE_LEVELS:
+        set_outline_level(ppr, OUTLINE_LEVELS[role])
     for run in text_runs(paragraph):
         set_run_style(run, size, bold=bold)
 
@@ -185,6 +304,8 @@ def classify_body(paragraphs: list[ET.Element], document_type: str) -> dict[int,
     after_salutation = False
     recipient_seen = False
     attachment_mode = False
+    report_title_seen = False
+    report_heading_seen = False
     for paragraph in paragraphs:
         text = paragraph_text(paragraph)
         role = "body"
@@ -219,11 +340,34 @@ def classify_body(paragraphs: list[ET.Element], document_type: str) -> dict[int,
                 role = "title"
             elif re.match(r"^[一二三四五六七八九十]+、", text):
                 role = "heading"
+        elif document_type == "研判报告":
+            if text == DOCUMENT_TITLES["研判报告"] and not report_title_seen:
+                role, report_title_seen = "title", True
+            elif HEADING_PATTERN.match(text) or text == "附件":
+                role, report_heading_seen = "heading", True
+                attachment_mode = text == "附件"
+            elif not report_heading_seen:
+                role = "caption"
+            elif SUBHEADING_PATTERN.match(text):
+                role = "subheading"
+            elif attachment_mode:
+                role = "attachment"
         roles[id(paragraph)] = role
     return roles
 
 
-def table_widths(document_type: str, columns: int) -> list[int]:
+def cell_text(cell: ET.Element) -> str:
+    return "".join(node.text or "" for node in cell.iter(w("t"))).strip()
+
+
+def table_headers(table: ET.Element) -> tuple[str, ...]:
+    rows = table.findall(w("tr"))
+    return tuple(cell_text(cell) for cell in rows[0].findall(w("tc"))) if rows else ()
+
+
+def table_widths(document_type: str, columns: int, headers: tuple[str, ...] = ()) -> list[int]:
+    if document_type == "研判报告" and headers in REPORT_TABLE_WIDTHS:
+        return REPORT_TABLE_WIDTHS[headers]
     if document_type == "证据清单" and columns == 5:
         return [720, 1600, 1100, 800, 4780]
     if document_type == "行动清单" and columns == 5:
@@ -240,7 +384,7 @@ def patch_tables(document: ET.Element, document_type: str) -> None:
         if not rows:
             continue
         columns = max(len(row.findall(w("tc"))) for row in rows)
-        widths = table_widths(document_type, columns)
+        widths = table_widths(document_type, columns, table_headers(table))
         tbl_pr = ensure(table, "tblPr", first=True)
         tbl_w = ensure(tbl_pr, "tblW")
         set_w(tbl_w, "type", "dxa")
@@ -337,6 +481,60 @@ def patch_page(document: ET.Element) -> None:
         set_w(pg_mar, key, value)
 
 
+def footer_xml() -> bytes:
+    """页脚居中“第 X 页 共 Y 页”，页码由 Word 域计算。"""
+    run_properties = (
+        f'<w:rPr><w:rFonts w:ascii="{FONT_LATIN}" w:hAnsi="{FONT_LATIN}" '
+        f'w:eastAsia="{FONT_EAST_ASIA}" w:cs="{FONT_LATIN}"/>'
+        f'<w:sz w:val="{SMALL_SIZE}"/><w:szCs w:val="{SMALL_SIZE}"/></w:rPr>'
+    )
+
+    def run(text: str) -> str:
+        return f'<w:r>{run_properties}<w:t xml:space="preserve">{text}</w:t></w:r>'
+
+    def field(instruction: str) -> str:
+        return f'<w:fldSimple w:instr=" {instruction} ">{run("1")}</w:fldSimple>'
+
+    return (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        f'<w:ftr xmlns:w="{W_NS}" xmlns:r="{R_NS}"><w:p><w:pPr><w:jc w:val="center"/></w:pPr>'
+        f'{run("第 ")}{field("PAGE")}{run(" 页　共 ")}{field("NUMPAGES")}{run(" 页")}'
+        '</w:p></w:ftr>'
+    ).encode("utf-8")
+
+
+def add_page_number_footer(files: dict[str, bytes], document: ET.Element) -> None:
+    """为研判报告加页码页脚：写入页脚部件、关系、内容类型和节属性引用。"""
+    rels_name = "word/_rels/document.xml.rels"
+    if rels_name not in files or "[Content_Types].xml" not in files:
+        raise ValueError("DOCX 缺少文档关系或内容类型，无法添加页码。")
+    files[FOOTER_PART] = footer_xml()
+    rels = files[rels_name].decode("utf-8")
+    if f'Id="{FOOTER_REL_ID}"' not in rels:
+        relation = (
+            f'<Relationship Id="{FOOTER_REL_ID}" Type="{FOOTER_REL_TYPE}" '
+            f'Target="{FOOTER_PART.split("/", 1)[1]}"/>'
+        )
+        rels = rels.replace("</Relationships>", relation + "</Relationships>", 1)
+        files[rels_name] = rels.encode("utf-8")
+    types = files["[Content_Types].xml"].decode("utf-8")
+    if f'PartName="/{FOOTER_PART}"' not in types:
+        override = f'<Override PartName="/{FOOTER_PART}" ContentType="{FOOTER_CONTENT_TYPE}"/>'
+        types = types.replace("</Types>", override + "</Types>", 1)
+        files["[Content_Types].xml"] = types.encode("utf-8")
+    sect_pr = document.find(f".//{w('sectPr')}")
+    if sect_pr is None:
+        raise ValueError("DOCX 缺少节属性，无法添加页码。")
+    for child in list(sect_pr):
+        if child.tag == w("footerReference") and child.get(w("type"), "default") == "default":
+            sect_pr.remove(child)
+    reference = ET.Element(w("footerReference"))
+    set_w(reference, "type", "default")
+    reference.set(f"{{{R_NS}}}id", FOOTER_REL_ID)
+    position = sum(1 for child in sect_pr if child.tag in {w("headerReference"), w("footerReference")})
+    sect_pr.insert(position, reference)
+
+
 def add_profile_metadata(files: dict[str, bytes], delivery_status: str) -> None:
     core_name = "docProps/core.xml"
     if core_name not in files:
@@ -355,8 +553,8 @@ def apply_jls_style(path: Path, document_type: str, delivery_status: str) -> Non
         raise ValueError(f"不支持的文书类型：{document_type}")
     if delivery_status not in DELIVERY_STATUSES:
         raise ValueError(f"不支持的交付层级：{delivery_status}")
-    if document_type == "行动清单" and delivery_status == "final_submission":
-        raise ValueError("行动清单属于内部工作文件，不得标记为最终提交版。")
+    if document_type in INTERNAL_DOCUMENT_TYPES and delivery_status == "final_submission":
+        raise ValueError(f"{document_type}属于内部工作文件，不得标记为最终提交版。")
     with ZipFile(path) as archive:
         files = {name: archive.read(name) for name in archive.namelist()}
     if any(name not in files for name in ("word/document.xml", "word/styles.xml", "word/fontTable.xml")):
@@ -368,10 +566,15 @@ def apply_jls_style(path: Path, document_type: str, delivery_status: str) -> Non
     remove_blank_body_paragraphs(document)
     paragraphs = direct_body_paragraphs(document)
     roles = classify_body(paragraphs, document_type)
+    outline = document_type == "研判报告"
     for paragraph in paragraphs:
-        set_paragraph_style(paragraph, roles[id(paragraph)])
+        set_paragraph_style(paragraph, roles[id(paragraph)], outline=outline)
     patch_tables(document, document_type)
     patch_page(document)
+    if document_type == "研判报告":
+        add_page_number_footer(files, document)
+    normalize_child_order(document)
+    normalize_child_order(styles)
     patch_styles(styles)
     patch_font_table(font_table)
     files["word/document.xml"] = ET.tostring(document, encoding="utf-8", xml_declaration=True)
@@ -400,6 +603,8 @@ def role_expectations(role: str) -> tuple[str, str, str | None, str | None, bool
         return TITLE_SIZE, "center", None, None, True
     if role == "heading":
         return HEADING_SIZE, "center", None, None, True
+    if role == "subheading":
+        return BODY_SIZE, "both", "firstLine", BODY_FIRST_LINE, True
     if role == "caption":
         return BODY_SIZE, "center", None, None, False
     if role == "no_indent":
@@ -425,15 +630,23 @@ def detect_document_type(document: ET.Element) -> str | None:
         return "证据清单"
     if "待补材料与行动清单" in texts:
         return "行动清单"
+    if DOCUMENT_TITLES["研判报告"] in texts:
+        return "研判报告"
     return None
 
 
-def validate_paragraph(paragraph: ET.Element, role: str, label: str, findings: list[str]) -> None:
+def validate_paragraph(
+    paragraph: ET.Element, role: str, label: str, findings: list[str], *, outline: bool = False,
+) -> None:
     size, alignment, indent_key, indent_value, bold_required = role_expectations(role)
     ppr = paragraph.find(w("pPr"))
     if ppr is None:
         findings.append(f"{label}缺少段落属性。")
         return
+    if outline and role in OUTLINE_LEVELS:
+        level = ppr.find(w("outlineLvl"))
+        if level is None or level.get(w("val")) != OUTLINE_LEVELS[role]:
+            findings.append(f"{label}缺少大纲级别 {OUTLINE_LEVELS[role]}。")
     spacing = ppr.find(w("spacing"))
     expected_spacing = {"before": "0", "after": "0", "line": LINE_TWIPS, "lineRule": "exact"}
     if spacing is None or any(spacing.get(w(key)) != value for key, value in expected_spacing.items()):
@@ -469,7 +682,7 @@ def validate_table(table: ET.Element, index: int, document_type: str, findings: 
         findings.append(f"表格 {index} 没有数据行。")
         return
     columns = max(len(row.findall(w("tc"))) for row in rows)
-    expected_widths = table_widths(document_type, columns)
+    expected_widths = table_widths(document_type, columns, table_headers(table))
     tbl_pr = table.find(w("tblPr"))
     tbl_w = tbl_pr.find(w("tblW")) if tbl_pr is not None else None
     layout = tbl_pr.find(w("tblLayout")) if tbl_pr is not None else None
@@ -515,9 +728,13 @@ def validate_jls_docx(
         return [f"不支持的交付层级：{delivery_status}"]
     try:
         with ZipFile(path) as archive:
+            names = archive.namelist()
             document = safe_fromstring(archive.read("word/document.xml"))
             font_table = safe_fromstring(archive.read("word/fontTable.xml"))
-            core = safe_fromstring(archive.read("docProps/core.xml")) if "docProps/core.xml" in archive.namelist() else None
+            core = safe_fromstring(archive.read("docProps/core.xml")) if "docProps/core.xml" in names else None
+            rels = archive.read("word/_rels/document.xml.rels").decode("utf-8") if "word/_rels/document.xml.rels" in names else ""
+            styles = safe_fromstring(archive.read("word/styles.xml")) if "word/styles.xml" in names else None
+            footers = {name: archive.read(name) for name in names if name.startswith("word/footer")}
     except (OSError, KeyError, BadZipFile, ET.ParseError, UnsafeXMLError) as exc:
         return [f"DOCX 无法解析：{exc}"]
     detected = detect_document_type(document)
@@ -526,8 +743,8 @@ def validate_jls_docx(
     if document_type not in DOCUMENT_TYPES or detected != document_type:
         findings.append(f"无法确认文书类型：声明={document_type!r}，识别={detected!r}。")
         return findings
-    if document_type == "行动清单" and delivery_status == "final_submission":
-        findings.append("行动清单属于内部工作文件，不得作为最终提交版。")
+    if document_type in INTERNAL_DOCUMENT_TYPES and delivery_status == "final_submission":
+        findings.append(f"{document_type}属于内部工作文件，不得作为最终提交版。")
 
     configured_font = next(
         (font for font in font_table.findall(w("font")) if font.get(w("name")) == FONT_EAST_ASIA),
@@ -543,16 +760,25 @@ def validate_jls_docx(
         if keywords is None or keywords.text != expected:
             findings.append("DOCX 元数据未绑定当前 JLS 版式配置和交付层级。")
 
+    findings.extend(child_order_findings(document, "word/document.xml"))
+    if styles is not None:
+        findings.extend(child_order_findings(styles, "word/styles.xml"))
+    for name, content in footers.items():
+        findings.extend(child_order_findings(safe_fromstring(content), name))
+
     paragraphs = direct_body_paragraphs(document)
     roles = classify_body(paragraphs, document_type)
+    outline = document_type == "研判报告"
     for index, paragraph in enumerate(paragraphs, 1):
         text = paragraph_text(paragraph)
         if not text:
             findings.append(f"正文第 {index} 段为空白段落。")
             continue
-        validate_paragraph(paragraph, roles[id(paragraph)], f"正文第 {index} 段“{text[:24]}”", findings)
+        validate_paragraph(
+            paragraph, roles[id(paragraph)], f"正文第 {index} 段“{text[:24]}”", findings, outline=outline,
+        )
 
-    expected_title = {"仲裁申请书": "劳动仲裁申请书", "证据清单": "证据目录", "行动清单": "待补材料与行动清单"}[document_type]
+    expected_title = DOCUMENT_TITLES[document_type]
     if sum(paragraph_text(paragraph) == expected_title for paragraph in paragraphs) != 1:
         findings.append(f"文书必须且只能包含一个标题“{expected_title}”。")
     tables = list(document.iter(w("tbl")))
@@ -568,6 +794,17 @@ def validate_jls_docx(
         findings.append("页面尺寸不是 A4。")
     if pg_mar is None or any(pg_mar.get(w(key)) != PAGE_MARGIN for key in ("top", "right", "bottom", "left")):
         findings.append("页面四边距不是 1 英寸。")
+    if document_type == "研判报告":
+        reference = next((
+            child for child in (sect_pr if sect_pr is not None else [])
+            if child.tag == w("footerReference") and child.get(w("type"), "default") == "default"
+        ), None)
+        relation = re.search(
+            rf'<Relationship[^>]*Id="{re.escape(reference.get(f"{{{R_NS}}}id", ""))}"[^>]*Target="([^"]+)"', rels,
+        ) if reference is not None else None
+        footer = footers.get(f"word/{relation.group(1)}") if relation else None
+        if footer is None or b"PAGE" not in footer:
+            findings.append("研判报告缺少页脚页码。")
 
     all_text = "\n".join(paragraph_text(paragraph) for paragraph in document.iter(w("p")))
     if delivery_status == "final_submission":

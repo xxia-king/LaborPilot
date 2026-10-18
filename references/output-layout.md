@@ -7,6 +7,7 @@
 ```text
 <case-root>/
 ├── 01_律师复核初稿/
+│   ├── 01_案件研判报告_律师复核稿_v1.docx
 │   ├── 02_<当前任务文书>_律师复核初稿_v1.docx
 │   └── 04_待补材料与行动清单_律师复核稿_v1.docx
 ├── 02_最终提交版/
@@ -44,7 +45,8 @@
 
 ## 整合式写作
 
-- `intake`、`issue_analysis`、`evidence_analysis`、`authority_research` 和 `claims_procedure` 共同更新同一份《案件研判报告》的对应章节。
+- `intake`、`issue_analysis`、`evidence_analysis`、`authority_research` 和 `claims_procedure` 把结构化结果写入 `case_state` 和 `.casework/`，不各自改写报告正文。《案件研判报告》由起草者按[结构契约](case-report-contract.md)整理为一份输入，经写作校验后由生成器一次渲染；同一论点只在一处论述。
+- 全部书面产物遵循[书面语体规范](writing-style.md)。《案件研判报告》和《待补材料与行动清单》属于内部工作文件，只生成律师复核稿，不生成最终提交版。
 - 材料缺口、客户询问、补证、金额核对和程序节点统一收束到《待补材料与行动清单》。
 - `drafting` 只产生用户明确要求的 `.docx` 文书，不顺带生成证据目录、质证意见等未请求文件。
 - 生成器不覆盖任何已有目标。同一交付层级需修改时显式增加 `--version`，生成 `_v2`；从初稿进入最终提交版时使用独立目录和新产物记录。

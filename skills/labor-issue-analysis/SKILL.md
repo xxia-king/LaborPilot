@@ -3,7 +3,7 @@ name: labor-issue-analysis
 description: 劳动争议争点、请求权或抗辩权基础分析。根据案件事实自动识别法律争点,建立请求/抗辩矩阵,列出构成要件和对方最强反向观点。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.4.4"
+version: "1.5.0"
 license: AGPL-3.0
 ---
 
@@ -17,3 +17,4 @@ license: AGPL-3.0
 6. 浙江口径节(如有)优先于一般规则引用。
 7. 将要件和待证事实交给证据分析。
 8. 将经复核的争点组织为矩阵 JSON，运行 `python3 scripts/build_issue_matrix.py --state <case_state.json> --input <争点矩阵.json>`。每个争点必须写明我方路径、构成要件及事实链接、对方最强观点与回应、备选路径或无备选理由、失败后果。待复核候选、空泛占位表述或引用不存在的事实／证据／法源 ID 均不得通过节点。
+9. 每个争点在《案件研判报告》中只有一个位置；同一理由服务多个争点时，在最相关的争点完整论述，其他争点只引结论。

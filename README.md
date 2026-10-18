@@ -4,7 +4,7 @@
 
 > 本插件由金莉珊律师制作——劳动争议智能办案引擎(全国规则 + 浙江口径)，149 部法规文献提炼为 96 张争点知识卡，内嵌分发
 
-[![Version](https://img.shields.io/badge/version-v1.4.4-brightgreen.svg)](./CHANGELOG.md) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Version](https://img.shields.io/badge/version-v1.5.0-brightgreen.svg)](./CHANGELOG.md) [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 **⚠️ 免责声明:本引擎产出的所有分析结果和法律文书均由 AI 辅助生成,仅供参考,不构成法律意见,必须经专业律师审核后方可使用。**
 
@@ -29,7 +29,7 @@ LaborPilot 的核心价值在于内置数据：作者系统梳理 149 部劳动�
 | 请求权分析 | 逐项审查构成要件、举证责任分配、对方抗辩路径                                  |
 | 金额计算  | 经济补偿(N/N+1/2N)、加班工资(150%/200%/300%)、工伤保险待遇(三笔一次性)等,精确到分 |
 | 浙江口径  | 浙江历史及未列入废止目录资料的研究线索；采用前逐项核验                             |
-| 文书生成  | 仲裁申请书、证据清单、行动清单,输出 .docx 格式                             |
+| 文书生成  | 案件研判报告、仲裁申请书、证据清单、行动清单,输出 .docx 格式                       |
 | 交付追溯  | 正式产物可反查业务来源、上游产物、版本、文件哈希、验证报告和律师审批                   |
 
 ## 内置知识体系
@@ -108,8 +108,11 @@ python3 scripts/generate_docs.py \
 
 最终提交版须直接派生自当前文件哈希已获律师批准的初稿，并作为新文件进入 `<case-root>/02_最终提交版/`，重新完成版式、业务验证和律师审批。生成时须显式提供 `--delivery-status final_submission --approved-by <律师姓名>`；行动清单及仍含内部待确认标记的内容不能生成最终提交版。
 
+《案件研判报告》先由 `scripts/build_report_input.py` 从案件状态生成输入脚手架，预填已复核争点、金额台账、时效截止日和已采用法条全文，再由起草者补写论证，按[结构契约](references/case-report-contract.md)生成：首页写结论、可能结果和急办事项，每个论点只在一处论述，正文默认不超过 4000 字，法条原文放附件。转换前由 `scripts/report_lint.py` 校验篇幅、论点清单、条文写法、简称、行话与补丁句、表格和重复文字，校验被阻断时不生成 DOCX；该脚本也可用 `--docx` 检查既有报告。研判报告属于内部工作文件，只生成律师复核稿，并带页码和标题大纲级别。全部书面产物遵循[书面语体规范](references/writing-style.md)。
+
 | 产出物     | 格式    | 内容                   |
 | ------- | ----- | -------------------- |
+| 案件研判报告  | .docx | 决策摘要、争点分析、金额与期限、策略与建议、附件 |
 | 劳动仲裁申请书 | .docx | 当事人、仲裁请求、事实与理由、落款    |
 | 证据目录    | .docx | 证据名称、来源、页码、证明目的      |
 | 行动清单    | .docx | 待核实事实、待补证据、金额核对、庭前行动 |

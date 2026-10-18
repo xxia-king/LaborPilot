@@ -4,6 +4,8 @@
 
 参考模板：assets/template-仲裁申请书.docx / template-证据清单.docx。
 Pandoc 完成内容转换后，由标准库 OOXML 修正器确定性应用并校验 JLS 版式。
+《案件研判报告》按 references/case-report-contract.md 的固定骨架渲染，
+转换前先通过 report_lint.py 的写作校验。
 
 用法：python3 generate_docs.py --case case.json --output 案件根目录 --types 仲裁申请书 --strict
 """
@@ -17,7 +19,8 @@ from datetime import date
 from pathlib import Path
 from zipfile import BadZipFile
 
-from docx_style import PROFILE_ID, apply_jls_style, validate_jls_docx
+from docx_style import INTERNAL_DOCUMENT_TYPES, PROFILE_ID, apply_jls_style, validate_jls_docx
+from report_lint import DEFAULT_BODY_LIMIT, lint_report, money, urgent_lines
 
 SKILL_DIR = Path(__file__).parent.parent
 ASSETS = SKILL_DIR / "assets"
@@ -29,8 +32,12 @@ DELIVERY_LABELS = {
     "lawyer_review_draft": "律师复核初稿",
     "final_submission": "最终提交版",
 }
-DOC_PREFIXES = {"仲裁申请书": "02", "证据清单": "03", "行动清单": "04"}
-DOC_DISPLAY_NAMES = {"仲裁申请书": "劳动仲裁申请书", "证据清单": "证据目录", "行动清单": "待补材料与行动清单"}
+DOC_PREFIXES = {"研判报告": "01", "仲裁申请书": "02", "证据清单": "03", "行动清单": "04"}
+DOC_DISPLAY_NAMES = {
+    "研判报告": "案件研判报告", "仲裁申请书": "劳动仲裁申请书",
+    "证据清单": "证据目录", "行动清单": "待补材料与行动清单",
+}
+CN_ORDINALS = "一二三四五六七八九十"
 
 # 中文数字日期
 CN_NUM = {"0":"〇","1":"一","2":"二","3":"三","4":"四","5":"五","6":"六","7":"七","8":"八","9":"九"}
@@ -70,14 +77,26 @@ def compact_prose(value):
     return re.sub(r"\s+", " ", str(value or "")).strip()
 
 
+# Pandoc Markdown 的行内语法字符：不转义时，“*”会变成斜体、“~”“^”变成上下标、“<…>”被当作 HTML 丢弃。
+MD_SPECIAL = set("\\`*_{}[]<>#~^$|@")
+
+
+def md_escape(value, *, keep_bold=False):
+    """转义行内语法字符，使作者文字原样进入 DOCX；keep_bold 时保留成对的 **加粗** 标记。"""
+    text = str(value or "")
+    if keep_bold:
+        return "**".join(md_escape(part) for part in text.split("**"))
+    return "".join("\\" + char if char in MD_SPECIAL else char for char in text)
+
+
 def table_cell(value):
-    """转义 Markdown 表格中的控制字符。"""
-    return str(value or "").replace("|", "\\|").replace("\n", " ").strip()
+    """表格单元格合并为单行并转义全部行内语法字符（含列分隔符“|”）。"""
+    return md_escape(re.sub(r"\s+", " ", str(value or "")).strip())
 
 
 def output_stem(doc_type, delivery_status, version):
     label = DELIVERY_LABELS[delivery_status]
-    if doc_type == "行动清单":
+    if doc_type in INTERNAL_DOCUMENT_TYPES:
         label = "律师复核稿"
     return f"{DOC_PREFIXES[doc_type]}_{DOC_DISPLAY_NAMES[doc_type]}_{label}_v{version}"
 
@@ -146,7 +165,7 @@ def generate_arbitration(case, claims):
     lines.append(f"申请人：{case.get('申请人','【申请人签名】')}")
     lines.append("")
     lines.append(cn_date())
-    return "\n".join(lines)
+    return "\n".join(md_escape(line) for line in lines)
 
 
 def generate_evidence_list(case, evidence_items):
@@ -156,7 +175,7 @@ def generate_evidence_list(case, evidence_items):
     applicant = case.get("申请人", "【申请人】")
     respondent = case.get("被申请人", "【被申请人】")
     cause = case.get("案由", "【案由】")
-    lines.append(f"{applicant}与{respondent}{cause}一案")
+    lines.append(md_escape(f"{applicant}与{respondent}{cause}一案"))
     lines.append("")
     lines.append("证据目录")
     lines.append("")
@@ -168,7 +187,7 @@ def generate_evidence_list(case, evidence_items):
                     f"{table_cell(e.get('页码'))} | {table_cell(e.get('证明目的'))} |")
     lines.append("")
     # 落款
-    lines.append(f"提交人：{case.get('申请人','【申请人签名】')}")
+    lines.append(md_escape(f"提交人：{case.get('申请人','【申请人签名】')}"))
     lines.append("")
     lines.append(f"提交时间：{cn_date()}")
     return "\n".join(lines)
@@ -203,6 +222,135 @@ def generate_action_list(case, actions):
     return "\n".join(lines)
 
 
+def md_paragraph(value):
+    """把作者段落转为 Markdown 正文段，避免被 Pandoc 误识别为列表、标题或引用。"""
+    text = md_escape(compact_prose(value), keep_bold=True)
+    if re.match(r"^\d+[.)]\s", text):
+        text = re.sub(r"^(\d+)([.)])", r"\1\\\2", text, count=1)
+    elif text[:1] in {"#", "-", "+", ">"} or (text.startswith("*") and not text.startswith("**")):
+        text = "\\" + text
+    return text
+
+
+def md_table(headers, rows):
+    lines = ["| " + " | ".join(headers) + " |", "|" + "---|" * len(headers)]
+    for row in rows:
+        lines.append("| " + " | ".join(table_cell(cell) for cell in row) + " |")
+    return lines
+
+
+def analysis_date(value):
+    match = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", str(value or "").strip())
+    if match:
+        year, month, day = match.groups()
+        return f"{year}年{int(month)}月{int(day)}日"
+    return str(value or "【待确认：分析基准日】")
+
+
+def generate_case_report(case, report):
+    """《案件研判报告》——按读者要做的决定组织，每个论点只在一处论述。"""
+    lines = ["案件研判报告", ""]
+    title = report.get("案件名称") or case.get("案由") or "【待确认：案件名称】"
+    lines.extend([md_escape(compact_prose(title)), ""])
+    caption = [report.get("程序阶段"), f"代理{report['代理立场']}" if report.get("代理立场") else None,
+               f"分析基准日：{analysis_date(report.get('分析基准日'))}", "律师复核稿"]
+    lines.extend([md_escape("　".join(item for item in caption if item)), ""])
+
+    sections = []
+    summary = report.get("决策摘要", {}) or {}
+    body = [md_paragraph(item) for item in summary.get("结论") or []]
+    outcomes = summary.get("可能结果") or []
+    if outcomes:
+        body.append("\n".join(md_table(["可能结果", "可能性", "金额影响"], [
+            [item.get("结果", ""), item.get("可能性", ""), item.get("金额影响", "")] for item in outcomes
+        ])))
+    urgent = urgent_lines(summary.get("紧急事项") or [])
+    if urgent:
+        body.append("需要立即办理的事项如下。")
+        body.extend(md_paragraph(item) for item in urgent)
+    sections.append(("决策摘要", body))
+
+    issues = report.get("争点") or []
+    if issues:
+        body = []
+        overview = [issue.get("一览") for issue in issues]
+        if all(isinstance(item, dict) for item in overview):
+            body.append("\n".join(md_table(["争点", "我方主要理由", "主要障碍", "评估"], [
+                [issue.get("标题", ""), item.get("我方主要理由", ""), item.get("主要障碍", ""), item.get("评估", "")]
+                for issue, item in zip(issues, overview)
+            ])))
+        for index, issue in enumerate(issues):
+            ordinal = CN_ORDINALS[index] if index < len(CN_ORDINALS) else str(index + 1)
+            body.append(f"（{ordinal}）{md_escape(compact_prose(issue.get('标题', '')))}")
+            body.extend(md_paragraph(item) for item in issue.get("段落") or [])
+        sections.append(("争点分析", body))
+
+    amounts = report.get("金额") or []
+    deadlines = report.get("期限") or []
+    if amounts or deadlines:
+        body = []
+        if amounts:
+            body.append("\n".join(md_table(["项目", "金额（元）", "说明"], [
+                [item.get("项目", ""), money(item.get("金额")), item.get("说明", "")] for item in amounts
+            ])))
+        body.extend(md_paragraph(item) for item in deadlines)
+        sections.append(("金额与期限", body))
+    strategy = report.get("策略") or []
+    if strategy:
+        sections.append(("策略与建议", [md_paragraph(item) for item in strategy]))
+
+    for index, (heading, body) in enumerate(sections):
+        lines.extend([f"{CN_ORDINALS[index]}、{heading}", ""])
+        for block in body:
+            lines.extend([block, ""])
+
+    appendix = report.get("附件") or {}
+    authorities = appendix.get("法律依据") or []
+    others = appendix.get("其他") or []
+    if authorities or others:
+        lines.extend(["附件", ""])
+        groups = []
+        if authorities:
+            groups.append(("法律依据", [
+                md_paragraph(f"{item.get('名称', '')}{item.get('条文', '')}：“{item.get('原文', '')}”")
+                for item in authorities
+            ]))
+        groups.extend((item.get("标题", ""), [md_paragraph(text) for text in item.get("段落") or []]) for item in others)
+        for index, (heading, body) in enumerate(groups):
+            lines.extend([f"（{CN_ORDINALS[index]}）{md_escape(compact_prose(heading))}", ""])
+            for block in body:
+                lines.extend([block, ""])
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def note_report_growth(lint, work_dir, delivery_status, version):
+    """与最近一个旧版本的写作校验比较正文字数；变长时提示，防止复核只增不减。"""
+    for earlier in range(version - 1, 0, -1):
+        path = work_dir / f"{output_stem('研判报告', delivery_status, earlier)}_写作校验.json"
+        if not path.exists():
+            continue
+        try:
+            previous = json.loads(path.read_text(encoding="utf-8")).get("body_chars")
+        except (OSError, ValueError, AttributeError):
+            return
+        if not isinstance(previous, int):
+            return
+        lint["previous_version"] = {"version": earlier, "body_chars": previous}
+        growth = lint["body_chars"] - previous
+        if growth > 0:
+            lint["findings"].append({
+                "id": f"R{len(lint['findings']) + 1:03d}",
+                "rule": "篇幅增长",
+                "severity": "medium",
+                "location": "",
+                "message": f"正文比 v{earlier} 增加 {growth} 字。复核意见应改进原段落；确需新增的，在 .casework/drafting/ 记录新增内容及理由。",
+                "excerpt": "",
+            })
+            if lint["status"] == "pass":
+                lint["status"] = "warn"
+        return
+
+
 # 文档类型 → 生成函数 + 参考样式
 DOC_REGISTRY = {}
 
@@ -212,6 +360,7 @@ def _register():
     DOC_REGISTRY["仲裁申请书"] = (generate_arbitration, ref_arb)
     DOC_REGISTRY["证据清单"] = (generate_evidence_list, ref_evd)
     DOC_REGISTRY["行动清单"] = (generate_action_list, None)
+    DOC_REGISTRY["研判报告"] = (generate_case_report, None)
 
 _register()
 
@@ -226,6 +375,8 @@ def main():
     ap.add_argument("--version", type=int, default=1, help="输出文件版本号，默认 1")
     ap.add_argument("--approved-by", help="最终提交版必须记录作出提交决定的律师姓名")
     ap.add_argument("--strict", action="store_true", help="兼容参数；正式 DOCX 始终按严格模式生成")
+    ap.add_argument("--report-char-limit", type=int,
+                    help=f"研判报告正文字数上限，默认取 report.篇幅上限 或 {DEFAULT_BODY_LIMIT}")
     args = ap.parse_args()
 
     if args.version < 1:
@@ -238,6 +389,7 @@ def main():
     claims = data.get("claims", [])
     evidence = data.get("evidence", [])
     actions = data.get("actions", {})
+    report = data.get("report")
 
     case_root = Path(args.output)
     out_dir = case_root / DELIVERY_DIRS[args.delivery_status]
@@ -250,13 +402,18 @@ def main():
     unknown = sorted(set(types) - set(DOC_REGISTRY))
     if unknown:
         ap.error("不支持的文书类型：" + "、".join(unknown))
-    if args.delivery_status == "final_submission" and "行动清单" in types:
-        ap.error("行动清单属于内部工作文件，不得生成最终提交版。")
+    internal = [doc_type for doc_type in types if doc_type in INTERNAL_DOCUMENT_TYPES]
+    if args.delivery_status == "final_submission" and internal:
+        ap.error("、".join(internal) + "属于内部工作文件，不得生成最终提交版。")
+    if "研判报告" in types and not isinstance(report, dict):
+        ap.error("生成研判报告须在 --case 输入中提供 report 对象，结构见 references/case-report-contract.md。")
 
     planned = []
     for doc_type in types:
         stem = output_stem(doc_type, args.delivery_status, args.version)
         planned.extend([work_dir / f"{stem}.md", work_dir / f"{stem}_版式验证.json", out_dir / f"{stem}.docx"])
+        if doc_type == "研判报告":
+            planned.append(work_dir / f"{stem}_写作校验.json")
     existing = [path for path in planned if path.exists()]
     if existing:
         ap.error("为避免覆盖既有版本，以下目标已存在：\n" + "\n".join(str(path) for path in existing))
@@ -274,6 +431,25 @@ def main():
             md_content = gen_fn(case, evidence)
         elif doc_type == "行动清单":
             md_content = gen_fn(case, actions)
+        elif doc_type == "研判报告":
+            stem = output_stem(doc_type, args.delivery_status, args.version)
+            try:
+                lint = lint_report(report, body_limit=args.report_char_limit)
+            except (TypeError, ValueError) as exc:
+                failures.append(f"研判报告: report 输入格式有误：{exc}")
+                continue
+            note_report_growth(lint, work_dir, args.delivery_status, args.version)
+            (work_dir / f"{stem}_写作校验.json").write_text(
+                json.dumps(lint, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+            )
+            if lint["status"] == "blocked":
+                blocking = [item for item in lint["findings"] if item["severity"] == "high"]
+                failures.append("研判报告: 写作校验未通过（" + str(len(blocking)) + " 项）：\n" + "\n".join(
+                    f"  - [{item['rule']}] {item['message']}" + (f"｜{item['excerpt']}" if item["excerpt"] else "")
+                    for item in blocking
+                ))
+                continue
+            md_content = gen_fn(case, report)
         else:
             continue
 

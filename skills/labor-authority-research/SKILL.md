@@ -3,7 +3,7 @@ name: labor-authority-research
 description: 劳动争议法律法规、规范性文件和浙江地方口径的检索与引用校验。当需要按争点、法规名、文号、条号、地域、时间效力检索，或核验 document_id、article_id、页码和效力状态时使用。
 homepage: https://jinlishan.com/
 author: 金莉珊律师（微信jinlishan_）
-version: "1.4.4"
+version: "1.5.0"
 license: AGPL-3.0
 ---
 
@@ -34,4 +34,4 @@ license: AGPL-3.0
 6. 正式采用的法源必须同时为 `verification_status=verified` 和 `applicability_status=applicable`，且不得为未生效或效力未明规则。一般已修改、废止或失效规则如因历史事实仍需适用，须核明时间适用并写明 `warning` 与理由；本次浙江目录七件地方文件仅作 `reference_only` 或 `excluded`，不得借历史日期正式采用。
 7. 执行器会计算完整条文的 SHA-256，反向回写构成要件和对方路径的 `rule_ids`，并要求每个构成要件都关联已验证且适用的法源。该完成条件不得豁免。旧 `rules[]` 仅为占位结构时，使用 `--replace-existing-rules` 显式升级，替换前状态保留在 `.casework/history/`。
 
-已验证法源、适用条件与浙江口径写入 `01_案件研判报告_vN.md`；索引、检索 JSON 和引用校验结果存入 `.casework/authority/`，不单独向用户交付“法源检索记录”。
+已验证法源、适用条件与浙江口径供《案件研判报告》引用：正文写法律全称加条款项序号，条文原文只放附件；索引、检索 JSON 和引用校验结果存入 `.casework/authority/`，不单独向用户交付“法源检索记录”。
