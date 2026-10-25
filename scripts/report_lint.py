@@ -502,10 +502,64 @@ def lint_sections(sections: list[Section], *, body_limit: int = DEFAULT_BODY_LIM
     }
 
 
+def validate_report_structure(report: dict[str, Any]) -> None:
+    """在文本检查前验证结构，避免漏掉正文或把字符串逐字渲染。"""
+    def object_at(value, path):
+        if not isinstance(value, dict):
+            raise ValueError(f"{path} 必须是对象。")
+        return value
+
+    def rows(value, path):
+        if not isinstance(value, list):
+            raise ValueError(f"{path} 必须是数组。")
+        return [object_at(item, f"{path}[{index}]") for index, item in enumerate(value)]
+
+    def paragraphs(value, path, required=False):
+        if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+            raise ValueError(f"{path} 必须是文字段落数组。")
+        if required and not any(item.strip() for item in value):
+            raise ValueError(f"{path} 不得为空。")
+
+    object_at(report, "report")
+    summary = object_at(report.get("决策摘要"), "决策摘要")
+    paragraphs(summary.get("结论"), "决策摘要.结论", required=True)
+    rows(summary.get("可能结果") or [], "决策摘要.可能结果")
+    rows(summary.get("紧急事项") or [], "决策摘要.紧急事项")
+    issues = rows(report.get("争点"), "争点")
+    if not issues:
+        raise ValueError("争点不得为空。")
+    ids = set()
+    for issue in issues:
+        issue_id = issue.get("id")
+        if not isinstance(issue_id, str) or not issue_id.strip() or issue_id in ids:
+            raise ValueError("争点 id 必须是非空且唯一的字符串。")
+        ids.add(issue_id)
+        if not isinstance(issue.get("标题"), str) or not issue["标题"].strip():
+            raise ValueError(f"争点 {issue_id} 的标题不得为空。")
+        paragraphs(issue.get("段落"), f"争点 {issue_id}.段落", required=True)
+        if issue.get("一览") is not None:
+            object_at(issue["一览"], f"争点 {issue_id}.一览")
+    paragraphs(report.get("策略"), "策略", required=True)
+    paragraphs(report.get("期限") or [], "期限")
+    rows(report.get("金额") or [], "金额")
+    rows(report.get("论点清单") or [], "论点清单")
+    appendix = object_at(report.get("附件") or {}, "附件")
+    rows(appendix.get("法律依据") or [], "附件.法律依据")
+    for item in rows(appendix.get("其他") or [], "附件.其他"):
+        paragraphs(item.get("段落") or [], "附件.其他.段落")
+
+
+def positive_limit(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError("篇幅上限必须是正整数。")
+    return value
+
+
 def lint_report(report: dict[str, Any], *, body_limit: int | None = None) -> dict[str, Any]:
     """校验生成器输入中的 report 对象；论点清单为必填项。"""
-    limit = body_limit or int(report.get("篇幅上限") or DEFAULT_BODY_LIMIT)
-    summary_limit = int(report.get("首页上限") or DEFAULT_SUMMARY_LIMIT)
+    validate_report_structure(report)
+    limit = positive_limit(body_limit if body_limit is not None else report.get("篇幅上限", DEFAULT_BODY_LIMIT))
+    summary_limit = positive_limit(report.get("首页上限", DEFAULT_SUMMARY_LIMIT))
     claims = report.get("论点清单")
     return lint_sections(
         sections_from_report(report), body_limit=limit, summary_limit=summary_limit,
@@ -530,10 +584,10 @@ def main() -> int:
     try:
         if args.input:
             data = json.loads(Path(args.input).read_text(encoding="utf-8"))
-            report = data.get("report", data)
+            report = data.get("report", data) if isinstance(data, dict) else data
             result = lint_report(report, body_limit=args.body_limit)
         else:
-            result = lint_docx(Path(args.docx), body_limit=args.body_limit or DEFAULT_BODY_LIMIT)
+            result = lint_docx(Path(args.docx), body_limit=positive_limit(args.body_limit if args.body_limit is not None else DEFAULT_BODY_LIMIT))
     except (OSError, ValueError, KeyError, BadZipFile, UnsafeXMLError) as exc:
         result = {"status": "blocked", "validator": "laborpilot-report-lint",
                   "findings": [{"id": "R001", "rule": "输入", "severity": "high", "location": "",

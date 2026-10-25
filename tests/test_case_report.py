@@ -43,6 +43,25 @@ class CaseReportLintTest(unittest.TestCase):
         self.assertEqual(result["status"], "pass", result["findings"])
         self.assertLess(result["body_chars"], result["body_limit"])
 
+    def test_incomplete_or_malformed_report_is_rejected(self):
+        for field, value in [("争点", []), ("策略", []), ("策略", "完整策略。"),
+                             ("决策摘要", []), ("金额", ["金额条目"]),
+                             ("论点清单", ["无位置的论点"])]:
+            with self.subTest(field=field, value=value):
+                report = load_fixture()["report"]
+                report[field] = value
+                with self.assertRaises(ValueError):
+                    report_lint.lint_report(report)
+        report = load_fixture()["report"]
+        report["争点"].append(copy.deepcopy(report["争点"][0]))
+        with self.assertRaisesRegex(ValueError, "唯一"):
+            report_lint.lint_report(report)
+
+    def test_invalid_length_limits_are_rejected(self):
+        for value in (0, -1, True, 1.5, "4000"):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                report_lint.lint_report(load_fixture()["report"], body_limit=value)
+
     def test_jargon_patches_symbols_and_claim_map_are_blocked(self):
         report = load_fixture()["report"]
         report["决策摘要"]["结论"].append("最高价值的结果是把2N打成0，这一点单独不足以翻盘。")
@@ -145,6 +164,30 @@ class CaseReportDocxTest(unittest.TestCase):
 
             reread = json.loads(self.run_cli(LINT, "--docx", str(docx)).stdout)
             self.assertNotEqual(reread["status"], "blocked", reread["findings"])
+
+    def test_combined_generation_preserves_report_in_both_orders(self):
+        for types in ("仲裁申请书,证据清单,行动清单,研判报告", "研判报告,仲裁申请书"):
+            with self.subTest(types=types), tempfile.TemporaryDirectory() as temporary:
+                root = Path(temporary)
+                result = self.generate(root, load_fixture(), "--types", types)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(len(list((root / "01_律师复核初稿").glob("*.docx"))), len(types.split(",")))
+                text = self.docx_text(root / "01_律师复核初稿" / f"{REPORT_NAME}.docx")
+                self.assertIn(load_fixture()["report"]["争点"][0]["标题"], html.unescape(text))
+
+    def test_invalid_report_cli_returns_actionable_error_without_docx(self):
+        content = load_fixture()
+        content["report"]["争点"] = ["错误的争点结构"]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            result = self.generate(root, content)
+            self.assertEqual(result.returncode, 1)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertIn("必须是对象", result.stderr)
+            self.assertFalse(list(root.rglob("*.docx")))
+            result = self.run_cli(LINT, "--input", str(root / "case.json"))
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(json.loads(result.stdout)["status"], "blocked")
 
     def test_generation_stops_before_docx_when_writing_check_blocks(self):
         content = load_fixture()

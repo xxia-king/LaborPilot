@@ -463,7 +463,7 @@ def main():
             try:
                 apply_jls_style(docx_file, doc_type, args.delivery_status)
                 findings = validate_jls_docx(docx_file, doc_type, args.delivery_status)
-                report = {
+                style_report = {
                     "status": "pass" if not findings else "blocked",
                     "profile": PROFILE_ID,
                     "document_type": doc_type,
@@ -472,7 +472,7 @@ def main():
                     "document_path": str(docx_file.resolve()),
                     "findings": findings,
                 }
-                report_file.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+                report_file.write_text(json.dumps(style_report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
                 if findings:
                     raise ValueError("\n".join(findings))
             except (OSError, ValueError, BadZipFile) as exc:
