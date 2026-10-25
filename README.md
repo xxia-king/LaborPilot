@@ -32,6 +32,15 @@ LaborPilot 的核心价值在于内置数据：作者系统梳理 149 部劳动�
 | 文书生成  | 案件研判报告、仲裁申请书、证据清单、行动清单,输出 .docx 格式                       |
 | 交付追溯  | 正式产物可反查业务来源、上游产物、版本、文件哈希、验证报告和律师审批                   |
 
+## 1.5.0 更新
+
+- 新增《案件研判报告》：从案件状态生成输入脚手架，补写论证后输出带页码、大纲和标准表格的律师复核稿。
+- 新增报告写作与结构校验：检查必需章节、争点编号唯一性、段落格式、篇幅、论点清单和重复文字；错误会阻止生成并给出提示。
+- 支持研判报告与其他文书组合生成，修复生成顺序导致报告输入被覆盖的问题。
+- 改善 Word 文书兼容性，保留算式、日期区间等文字中的特殊符号，并检查文档 XML 属性顺序。
+
+完整变更见 [CHANGELOG](CHANGELOG.md)，发布下载见 [v1.5.0](https://github.com/xxia-king/LaborPilot/releases/tag/v1.5.0)。本版的期限能力仍为记录、基本一致性校验和报告展示；完整期限计算优化尚未接入，详见下文。
+
 ## 内置知识体系
 
 区别于依赖联网检索、或要求用户自备数据库的法律 AI 工具,LaborPilot 将 149 部法规文献提炼融合为争点知识卡,编译嵌入引擎本体:
@@ -60,6 +69,8 @@ python3 scripts/knowledge_stats.py
 git clone https://github.com/xxia-king/LaborPilot.git
 cd LaborPilot
 ```
+
+默认 `main` 分支为通用插件。通过 WorkBuddy 专家上传渠道使用的适配版独立维护在 [`workbuddy` 分支](https://github.com/xxia-king/LaborPilot/tree/workbuddy)，其版本与通用版分别维护；普通安装使用上面的默认命令即可。
 
 通用 Agent 以仓库根目录的 `SKILL.md` 为入口；支持多 Skill 自动发现的平台可直接读取 `skills/` 下的专业 Skill。Codex 可通过 `.codex-plugin/plugin.json` 识别整包插件。
 
@@ -109,6 +120,27 @@ python3 scripts/generate_docs.py \
 最终提交版须直接派生自当前文件哈希已获律师批准的初稿，并作为新文件进入 `<case-root>/02_最终提交版/`，重新完成版式、业务验证和律师审批。生成时须显式提供 `--delivery-status final_submission --approved-by <律师姓名>`；行动清单及仍含内部待确认标记的内容不能生成最终提交版。
 
 《案件研判报告》先由 `scripts/build_report_input.py` 从案件状态生成输入脚手架，预填已复核争点、金额台账、时效截止日和已采用法条全文，再由起草者补写论证，按[结构契约](references/case-report-contract.md)生成：首页写结论、可能结果和急办事项，每个论点只在一处论述，正文默认不超过 4000 字，法条原文放附件。转换前由 `scripts/report_lint.py` 校验篇幅、论点清单、条文写法、简称、行话与补丁句、表格和重复文字，校验被阻断时不生成 DOCX；该脚本也可用 `--docx` 检查既有报告。研判报告属于内部工作文件，只生成律师复核稿，并带页码和标题大纲级别。全部书面产物遵循[书面语体规范](references/writing-style.md)。
+
+生成研判报告的步骤如下（`<case-root>` 请替换为实际案件目录；先建立并复核案件状态）：
+
+```bash
+# 生成输入骨架；已有输入不会被覆盖
+python3 scripts/build_report_input.py \
+  --state <case-root>/.casework/case_state.json \
+  --case-name <案件名称>
+
+# 补写 report_input.json 中的全部【待撰写】内容和论点清单后再执行
+python3 scripts/report_lint.py \
+  --input <case-root>/.casework/drafting/report_input.json
+
+python3 scripts/generate_docs.py \
+  --case <case-root>/.casework/drafting/report_input.json \
+  --output <case-root> \
+  --types 研判报告 \
+  --strict
+```
+
+修改后使用 `--version 2` 等新版本号生成，不覆盖旧稿。一次生成多类文书时，输入须同时包含对应的 `report`、`case`、`claims`、`evidence` 或 `actions` 数据；`--types` 可以逗号分隔指定类型，研判报告可放在任意顺序。写作校验只检查结构与表达，不替代事实、法律适用和论证质量的律师复核。
 
 | 产出物     | 格式    | 内容                   |
 | ------- | ----- | -------------------- |
@@ -210,6 +242,8 @@ python3 scripts/analyze_procedure.py \
 
 程序分析骨架只用于待复核提示，不会自动写入案件结论。正式台账对每个已复核争点记录时效状态及起算日／截止日、受理机构与案件地域、一裁终局、先予执行或其他临时救济、后续起诉／撤销／执行等救济路径、法源、待确认项和风险，并绑定当前分析日及内容摘要。所引法源必须已核验、已采用且适用于对应争点；脚本不替律师选择程序策略。
 
+**期限能力边界（1.5.0）**：起算日与截止日由律师或 Agent 依据核验后的法源填写；程序检查日期和时效内／外结论是否矛盾，并将已填写的截止日带入研判报告。当前不提供完整的自动期限算法，尚未接入节假日顺延、中止／中断后的自动重算或到期提醒。后续将先完成期限法源核验与修订，再接入经确认的规则和边界测试。
+
 金额计算和程序分析是 `claims_procedure` 的两组独立完成条件。每个已复核争点都必须有完整程序分析，且不得存在待确认项；任一条件不满足都不能进入策略审批，程序门禁不得豁免。
 
 ### 独立验证
@@ -232,10 +266,20 @@ python3 scripts/workflow_graph.py record-validation \
 
 确定性验证器检查状态、材料、引用、法源、金额、程序、产物和工作图一致性；对抗验证器逐争点生成挑战矩阵，并以六项可重算检查核对对方最强论证及回应、失败边界、事实分层、事实冲突、引用一致性和程序完整性。未解决冲突会退回核实；缺少时效、管辖、一裁终局、临时救济或后续救济路径，以及程序摘要被篡改，都会阻断通过。对抗报告绑定包含事实与程序状态的业务摘要，登记时重新计算并保存报告 SHA-256；任意拼装、已经过期或登记后被修改的报告不能解锁验证节点。验证器只负责暴露问题，不修改初稿后自行宣告通过，最终交付仍须律师审批。
 
+### 回归检查
+
+```bash
+python3 scripts/sync_version.py --check
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -v
+python3 scripts/domain_eval.py
+```
+
+1.5.0 发布时，Python 3.11 与 3.12 各通过 104 项自动化测试，领域与法律版本评测通过 18 个情境（14 个争议检索情境、4 个法律版本日期情境）。自动化测试包含对领域评测的检查，两者并非 122 个互不重复的案件验证。测试证明已覆盖场景的程序行为符合预期，不代替真实案件试用或律师对法律结论的复核。
+
 ### 端到端回归
 
 ```bash
-PYTHONDONTWRITEBYTECODE=1 python3 -m unittest tests/test_end_to_end_casework.py -v
+PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -p test_end_to_end_casework.py -v
 ```
 
 该回归使用完全虚构的当事人与材料，依次执行任务确认、材料接入、事实时间轴、争点矩阵、证据链、法源适配、金额计算、策略审批、真实 Pandoc 文书转换、产物登记、确定性与对抗验证、律师审批和阶段回写。测试会打开生成的 DOCX，断言其中确实包含虚构当事人及计算所得的 70,000.00 元请求，而不是只检查文件是否存在。内部 Markdown 写入 `.casework/drafting/`，案件根目录只保留 `.docx`；这项回归证明办案链可以真实走通，不代替最终提交版的 JLS Word 版式验收。
