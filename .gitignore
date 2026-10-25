@@ -30,3 +30,7 @@ build_cards.py
 AILOG.md
 TASKS.md
 .agent/
+
+# 仅同步根级、经整理可公开的维护台账；本机详细记录继续忽略。
+!/TASKS.md
+!/AILOG.md

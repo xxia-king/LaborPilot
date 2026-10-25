@@ -1,5 +1,7 @@
 # LaborPilot
 
+> 当前为 WorkBuddy 专家适配分支。专家交付与打包方式见 [WorkBuddy 说明](docs/WORKBUDDY.md)；普通插件请使用 [main 分支](https://github.com/xxia-king/LaborPilot/tree/main)。
+
 > 废止复核（2026-09-07）：浙江2009年试行意见、解答一至五及2014年加班工资仲裁时效解答仅供历史研究，不作现行法源；解答六、七等未列入者不连带废止。观点须逐条另核有效依据。
 
 > 本插件由金莉珊律师制作——劳动争议智能办案引擎(全国规则 + 浙江口径)，149 部法规文献提炼为 96 张争点知识卡，内嵌分发
@@ -57,8 +59,8 @@ python3 scripts/knowledge_stats.py
 运行脚本和测试需要 Python 3.11 或更高版本（推荐 3.12）；macOS 系统自带的 Python 3.9 不受支持。开始前请先运行 `python3 --version` 确认当前解释器版本。
 
 ```bash
-git clone https://github.com/xxia-king/LaborPilot.git
-cd LaborPilot
+git clone --branch workbuddy https://github.com/xxia-king/LaborPilot.git laborpilot
+cd laborpilot
 ```
 
 通用 Agent 以仓库根目录的 `SKILL.md` 为入口；支持多 Skill 自动发现的平台可直接读取 `skills/` 下的专业 Skill。Codex 可通过 `.codex-plugin/plugin.json` 识别整包插件。

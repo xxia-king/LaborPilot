@@ -1,0 +1,4 @@
+# 维护记录随 Git 同步，但不进入 git archive / GitHub 源码 ZIP。
+/TASKS.md export-ignore
+/AILOG.md export-ignore
+/docs/maintenance export-ignore

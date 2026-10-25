@@ -27,13 +27,17 @@ python3 scripts/sync_version.py --check
 python3 -m unittest discover -s tests -v
 ```
 
-提交完成后，从指定 Git 提交导出到临时目录再打包，避免混入未跟踪的案件资料、本地配置或其他开发产物：
+提交完成后，必须从指定 Git 提交导出到临时目录再打包。`git archive` 会按 `.gitattributes` 自动排除维护记录，同时避免混入未跟踪的案件资料、本地配置或其他开发产物；不要直接将工作目录交给打包器：
 
 ```bash
 stage_dir=$(mktemp -d)
 expert_dir="$stage_dir/plugins/marketplaces/my-experts/plugins/laborpilot"
 mkdir -p "$expert_dir"
 git archive HEAD | tar -x -C "$expert_dir"
+# 维护记录不得进入专家包；任一检查失败立即停止。
+test ! -e "$expert_dir/TASKS.md" || exit 1
+test ! -e "$expert_dir/AILOG.md" || exit 1
+test ! -e "$expert_dir/docs/maintenance" || exit 1
 WORKBUDDY_CONFIG_DIR="$stage_dir" python3 "$EXPERT_MANAGER/scripts/validate_expert.py" "$expert_dir"
 WORKBUDDY_CONFIG_DIR="$stage_dir" python3 "$EXPERT_MANAGER/scripts/package_expert.py" "$expert_dir" "$stage_dir/dist"
 ```
@@ -47,3 +51,7 @@ WORKBUDDY_CONFIG_DIR="$stage_dir" python3 "$EXPERT_MANAGER/scripts/package_exper
 先确认 `origin/main` 的变化以及其他本地开发分支的未发布工作，再决定本分支基线。不得把其他分支的开发成果或版本号混入本次 1.4.4 适配。平台通用的引擎修复在主线统一维护；更新专家版时，将所需主线更新同步到 `workbuddy`，检查冲突、重新校验和打包，再经 WorkBuddy 专家渠道上传。不得将专家包装文件反向合入普通插件，也不要在安装副本内开发。
 
 未来升级版本时，现有 `scripts/sync_version.py` 是否覆盖 WorkBuddy 清单需要另行核验，并确保 `VERSION` 与 `.codebuddy-plugin/plugin.json` 的 `version` 一致。
+
+## 维护记录同步
+
+根级 `TASKS.md`、`AILOG.md` 与 `docs/maintenance/` 随 `workbuddy` 分支同步，供维护者通过 Git clone 接续；`.gitattributes` 将它们排除在 `git archive` 和 GitHub 源码 ZIP 外。任务状态只在源码仓的 `TASKS.md` 维护。原始备份、本机详细日志和清理清单继续保存在源码仓之外。
