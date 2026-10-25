@@ -1,0 +1,56 @@
+{
+  "name": "laborpilot",
+  "version": "1.4.4",
+  "description": "China labor dispute intelligent casework engine with 96 compiled issue knowledge cards, covering issue analysis, claims calculation, and arbitration document drafting.",
+  "author": {
+    "name": "金莉珊律师"
+  },
+  "homepage": "https://jinlishan.com/",
+  "license": "AGPL-3.0",
+  "agents": ["./agents/laborpilot.md"],
+  "skills": [
+    "./skills/labor-dispute-casework",
+    "./skills/labor-task-intake",
+    "./skills/labor-material-ingestion",
+    "./skills/labor-case-intake",
+    "./skills/labor-issue-analysis",
+    "./skills/labor-evidence-analysis",
+    "./skills/labor-authority-research",
+    "./skills/labor-claims-procedure",
+    "./skills/labor-document-drafting",
+    "./skills/labor-case-validator"
+  ],
+
+  "expertType": "agent",
+  "agentName": "laborpilot",
+
+  "displayName": {
+    "en": "Lawyer Jin Lishan",
+    "zh": "金莉珊律师"
+  },
+  "profession": {
+    "en": "Labor Dispute Casework Expert",
+    "zh": "劳动争议智能办案专家"
+  },
+  "displayDescription": {
+    "en": "Built by lawyer Jin Lishan from 149 labor laws and regulations; supports issue spotting, evidence organization, damages calculation and arbitration document drafting.",
+    "zh": "金莉珊律师基于149部法律法规打造，支持争议焦点识别、证据梳理、金额计算与仲裁文书生成。"
+  },
+  "avatar": "avatars/laborpilot.png",
+  "categoryId": "11-SecurityCompliance",
+  "defaultInitPrompt": {
+    "zh": "我有一宗劳动争议要仲裁，帮我分析争议焦点并梳理证据",
+    "en": "I have a labor dispute heading to arbitration. Help me analyze the disputed issues and organize the evidence."
+  },
+  "plugin": "laborpilot",
+  "tags": [
+    { "en": "Issue Analysis", "zh": "争议焦点分析" },
+    { "en": "Work Injury Compensation", "zh": "工伤补偿赔偿计算" },
+    { "en": "Arbitration Drafting", "zh": "仲裁文书起草" }
+  ],
+  "quickPrompts": [
+    { "en": "I have a labor dispute heading to arbitration. Help me analyze the disputed issues and organize the evidence.", "zh": "我有一宗劳动争议要仲裁，帮我分析争议焦点并梳理证据" },
+    { "en": "I suffered a grade-10 work injury and my employer only paid medical expenses. Help me calculate the benefits I am still entitled to.", "zh": "我工伤十级伤残，公司只赔了医药费，帮我算还应得哪些待遇" },
+    { "en": "Draft a labor arbitration application based on my case materials.", "zh": "根据我的案件材料，帮我起草劳动仲裁申请书" }
+  ]
+}
